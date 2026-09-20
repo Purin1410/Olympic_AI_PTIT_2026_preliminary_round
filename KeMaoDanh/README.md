@@ -51,9 +51,9 @@ drive.mount('/content/drive')
 
 # 4. Thiết lập biến môi trường trỏ đến dữ liệu
 import os
-os.environ['DATA_ROOT'] = '/content/drive/MyDrive/dataset/train'
+os.environ['DATA_ROOT'] = '/content/drive/MyDrive/data/train'
 # Chỉ đặt TEST_ROOT nếu có bộ test:
-# os.environ['TEST_ROOT'] = '/content/drive/MyDrive/dataset/test'
+# os.environ['TEST_ROOT'] = '/content/drive/MyDrive/data/test'
 ```
 
 Sau khi cài hoặc đổi torch trên Colab, restart runtime rồi chạy lại cell mount/đường dẫn. Các notebook dùng cùng thuật toán cho local và Colab; chọn GPU runtime cho bài 02–04 và nhánh full. Lần đầu tải trọng số ImageNet cần mạng. Phiên Colab có thể ngắt; lưu repo và artifacts trên Drive để giữ các fold đã hoàn tất. Fold chạy dở chưa hỗ trợ resume.
@@ -62,7 +62,7 @@ Sau khi cài hoặc đổi torch trên Colab, restart runtime rồi chạy lại
 
 ## 2. Cấu trúc Dữ liệu
 
-Người học tự cung cấp dữ liệu ảnh thật theo cấu trúc:
+Dữ liệu ảnh thật theo cấu trúc:
 
 ```text
 data/
@@ -71,6 +71,7 @@ data/
 │   └── images/...          # Các file ảnh thật và giả
 └── test/                   # (Tùy chọn) Bộ dự đoán không có nhãn
     ├── pairs.csv           # Cột: pair_id,image_0,image_1
+    ├── pairs_results.csv   # Cột: pair_id,image_0,image_1,label - phần này là label được reproduct lại từ cuộc thi
     └── images/...
 ```
 
@@ -145,4 +146,3 @@ Giữ cùng `RUN_ID='lesson_session'` trong bài 01–05. Bài 01 tạo phiên; 
 
 Phiên lưu hash của ảnh, manifest và code. Fold hoàn chỉnh chỉ được dùng lại khi config, ID, metadata dự đoán và hash checkpoint khớp. Fold thiếu được train; fold dở dang hoặc không khớp sẽ dừng, hãy đặt RUN_ID mới để bắt đầu một thí nghiệm khác. LR được fit lại từ dữ liệu thật khi hoàn tất 3 fold.
 
-Bản này đã được kiểm tra tĩnh và đọc rà soát code/notebook; **chưa chạy notebook, train hay kiểm tra runtime trên GPU**. Không có điểm số tái lập mới được khẳng định. Các con số và ảnh kết quả sẽ xuất hiện khi người học chạy với dữ liệu thật. Dependency được ghim để mô tả môi trường dự kiến, chưa phải xác nhận cài đặt thành công trên mọi máy.

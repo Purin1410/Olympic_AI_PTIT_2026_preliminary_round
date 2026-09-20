@@ -1,6 +1,6 @@
 # Olympic AI PTIT 2026 - Preliminary Round
 
-Repository bài giải và chuỗi bài giảng thực nghiệm có định hướng sư phạm. Mỗi bài toán có cấu trúc thư mục, môi trường và pipeline thực nghiệm độc lập.
+Repository bài giải và chuỗi bài giảng thực nghiệm cho Olympic AI PTIT 2026. Mỗi bài toán có cấu trúc thư mục, môi trường và pipeline thực nghiệm độc lập.
 
 ## Các bài toán
 
