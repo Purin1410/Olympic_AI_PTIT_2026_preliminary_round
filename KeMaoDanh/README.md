@@ -6,7 +6,7 @@ Kho lưu trữ mã nguồn giải pháp và chuỗi bài giảng thực nghiệm
 
 Mỗi mẫu dữ liệu là một cặp gồm hai bức ảnh chân dung (`image_0` và `image_1`), trong đó có đúng một ảnh thật và một ảnh giả mạo. Hệ thống học cách so sánh các đặc trưng thị giác và dấu vết kỹ thuật số giữa hai bức ảnh để dự đoán nhãn vị trí của ảnh giả: `fake_position` thuộc tập {0, 1}.
 
-Tài liệu chi tiết: [Mô tả bài toán](docs/challenge.md), [Kiến trúc pipeline và mã nguồn](docs/pipeline.md), [Bảng ánh xạ 27 trang báo cáo nghiên cứu](docs/report_mapping.md).
+Tài liệu chi tiết: [Mô tả bài toán](docs/challenge.md), [Kiến trúc pipeline và mã nguồn](docs/pipeline.md), [Nguồn của kết quả đã chạy](docs/execution.md).
 
 ---
 
@@ -160,41 +160,3 @@ uv run --locked --extra cu128 jupyter nbconvert --execute --to notebook --Execut
 ```
 
 Nếu mở trực tiếp từng file trong giao diện Kaggle, kernel đó cần có các thư viện tương ứng; chỉ tạo `.venv` không tự đổi kernel. CUDA cần được bật cho các bài CNN; chỉ baseline LR chạy được hoàn toàn bằng CPU. Internet cần được bật khi cài gói hoặc tải trọng số lần đầu.
-
----
-
-## 7. Kiểm tra Tĩnh và Giao thức Dòng lệnh
-
-### 7.1. Phân biệt CLI Kế thừa (`run_pipeline.py`) và Giao thức Hiện hành
-- Kịch bản `scripts/run_pipeline.py` là **giao thức dòng lệnh cũ (legacy protocol)**. Kịch bản này thực thi 5 kiến trúc CNN cố định và mặc định suy diễn B2 hoặc blend B2+Native theo báo cáo lịch sử. Kịch bản này không áp dụng luồng quyết định động mới (sàng lọc 8 cấu hình, shortlist 3 seed, cổng blend động theo winner, khóa freeze_review và refit 1.000 cặp).
-- Để vận hành đúng và đủ toàn bộ giao thức thực nghiệm hiện hành, khuyến nghị sử dụng notebook điều phối `notebooks/pipeline_end_to_end.ipynb`.
-
-### 7.2. Kiểm tra Cấu trúc Tĩnh Dự án (`check_structure.py`)
-Kịch bản kiểm tra tĩnh chạy nhanh với thư viện chuẩn Python:
-
-```bash
-# Kiểm tra cấu trúc tĩnh của 13 notebook (chấp nhận notebook đã có kết quả thực thi):
-python scripts/check_structure.py
-
-# Kiểm tra nghiêm ngặt: yêu cầu mọi cell code phải có execution_count tuần tự 1..N và không có lỗi:
-python scripts/check_structure.py --require-executed
-
-# Kiểm tra thư mục bản nháp:
-python scripts/check_structure.py --notebook-dir notebooks/revision_draft
-```
-
-### 7.3. Kịch bản Xuất bản Notebook Đã Thực thi (`publish_executed_notebooks.py`)
-Dành cho người quản trị cập nhật kết quả sau khi hoàn thành lượt chạy trên GPU:
-
-```bash
-python scripts/publish_executed_notebooks.py \
-    --evidence-dir /duong/dan/den/evidence \
-    --archive-dir /duong/dan/ngoai_repo/archive \
-    --dry-run
-```
-
-- Kiểm tra tệp `execution_summary.json`: đúng 13 notebook duy nhất, trạng thái `passed`, chế độ `full`, `smoke=False` (kiểu boolean), khớp số lượng cell code, và không có lỗi.
-- Yêu cầu bắt buộc trường `source_sha256` khớp với mã băm của bản nháp gốc trong `revision_draft`, kiểm tra thứ tự cell code tuần tự 1..N và so khớp từng cell để chống can thiệp mã nguồn.
-- Kiểm tra trước xung đột tệp lưu trữ (preflight collision check) và từ chối nếu tệp lưu trữ đích đã tồn tại với nội dung khác.
-- Từ chối thư mục lưu trữ nằm trong repository hoặc thư mục evidence nằm trong thư mục notebook chính.
-- Sao lưu toàn bộ notebook cũ ra thư mục ngoài trước khi thay thế hoặc dọn dẹp các tệp cũ.

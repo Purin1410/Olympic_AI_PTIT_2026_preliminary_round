@@ -19,10 +19,10 @@ Kho lưu trữ tổng hợp giải pháp và chuỗi bài giảng thực nghiệ
 └── KeMaoDanh/
     ├── README.md                 # Hướng dẫn chi tiết, cài đặt môi trường bằng uv
     ├── notebooks/                # Chuỗi 13 notebook thực hành từ cơ bản đến mở rộng
-    ├── scripts/                  # Kịch bản kiểm tra tĩnh, xuất bản và pipeline kế thừa
+    ├── scripts/                  # Chuẩn bị dữ liệu và đánh giá dự đoán
     ├── src/kmd/                  # Các mô-đun mã nguồn lõi (extractor, models, trainer, pipeline, suite, gate, decision_flow, finalization, teaching)
     ├── configs/                  # Các tệp cấu hình JSON và danh sách phân chia development_split.csv
-    ├── docs/                     # Tài liệu đặc tả bài toán, kiến trúc pipeline và bảng ánh xạ 27 trang báo cáo
+    ├── docs/                     # Tài liệu bài toán, pipeline và nguồn của kết quả đã chạy
     ├── data/                     # Dữ liệu hình ảnh (được bỏ qua không commit lên Git)
     ├── artifacts/models/         # Checkpoint và artifacts lưu theo phiên làm việc (không commit)
     └── outputs/                  # Tệp dự đoán xác suất và tệp nộp bài submission.csv (không commit)
@@ -54,7 +54,6 @@ Chuỗi 13 notebook thực hành tuân thủ chu trình khoa học: `Quan sát -
 
 ### 3. Bộ điều phối Tổng thể và Giao thức Thực nghiệm
 - [pipeline_end_to_end.ipynb](KeMaoDanh/notebooks/pipeline_end_to_end.ipynb): Thực thi toàn bộ quy trình theo giao thức hiện hành từ dữ liệu đến submission. Thiết lập `PROFILE = 'baseline'` cho Logistic Regression nhanh trên CPU/GPU, hoặc `PROFILE = 'full'` để chạy sàng lọc CNN, xác nhận 3 seed, thử blend với native, khóa qua `freeze_review`, hỗ trợ các phụ lục khi đặt `KMD_INCLUDE_EXTENSIONS=1`, và xuất kết quả theo chiến lược `fold_ensemble` hoặc `refit_all`.
-- *Lưu ý về CLI cũ:* Kịch bản dòng lệnh `scripts/run_pipeline.py` là giao thức kế thừa (legacy protocol), thực thi 5 kiến trúc cố định và mặc định xuất B2 theo báo cáo lịch sử. Kịch bản này không áp dụng luồng quyết định động mới (sàng lọc 8 cấu hình, shortlist 3 seed, cổng blend động, khóa freeze_review, refit 1.000 cặp). Để vận hành đầy đủ giao thức mới nhất, khuyến nghị sử dụng `pipeline_end_to_end.ipynb`.
 
 ---
 
@@ -71,10 +70,4 @@ uv sync --locked --extra cu128
 
 # Khởi động Jupyter Lab:
 uv run --locked --extra cu128 jupyter lab
-
-# Kiểm tra cấu trúc tĩnh của 13 notebook:
-python scripts/check_structure.py
-
-# Kiểm tra nghiêm ngặt toàn bộ cell code đã được thực thi tuần tự 1..N và không có lỗi:
-python scripts/check_structure.py --require-executed
 ```

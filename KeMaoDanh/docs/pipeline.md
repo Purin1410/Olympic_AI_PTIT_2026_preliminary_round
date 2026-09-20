@@ -141,34 +141,11 @@ Xuất bài nộp theo chiến lược: fold_ensemble (mặc định) hoặc ref
 
 ---
 
-## 4. Dòng lệnh và Kịch bản Hỗ trợ
+## 4. Chạy toàn bộ pipeline
 
-### 4.1. Phân biệt Kịch bản Kế thừa và Giao thức Hiện hành
-- **`scripts/run_pipeline.py` (Kế thừa / Legacy):** Là kịch bản dòng lệnh được xây dựng ở giai đoạn trước. Kịch bản này huấn luyện 5 kiến trúc cố định và mặc định suy diễn B2 hoặc blend B2+Native theo quyết định lịch sử của báo cáo kỹ thuật. Kịch bản không áp dụng luồng quyết định động mới (sàng lọc 8 cấu hình, shortlist 3 seed, cổng blend động, khóa freeze_review, refit 1.000 cặp).
-- **`notebooks/pipeline_end_to_end.ipynb` (Khuyến nghị):** Thực thi đầy đủ và trung thực toàn bộ giao thức mới nhất, gọi trực tiếp các hàm API trong `kmd.decision_flow` và `kmd.finalization`.
+Notebook [`pipeline_end_to_end.ipynb`](../notebooks/pipeline_end_to_end.ipynb) là điểm vào chính để chạy giao thức hiện hành từ dữ liệu đến tệp nộp bài. Notebook gọi trực tiếp các hàm trong `kmd.decision_flow` và `kmd.finalization`, đồng thời lưu lại các quyết định chọn mô hình trước khi đối chiếu private.
 
-### 4.2. Kiểm tra Cấu trúc Tĩnh Dự án (`check_structure.py`)
-Kịch bản kiểm tra tĩnh chạy với thư viện chuẩn Python:
+Hai script độc lập được giữ lại vì phục vụ trực tiếp cho người học:
 
-```bash
-# Kiểm tra cấu trúc tĩnh của 13 notebook (chấp nhận notebook đã có kết quả thực thi):
-python scripts/check_structure.py
-
-# Kiểm tra nghiêm ngặt: yêu cầu mọi cell code phải có execution_count tuần tự 1..N và không có lỗi:
-python scripts/check_structure.py --require-executed
-
-# Kiểm tra thư mục bản nháp revision_draft:
-python scripts/check_structure.py --notebook-dir notebooks/revision_draft
-```
-
-### 4.3. Xuất bản Notebook Đã Thực thi (`publish_executed_notebooks.py`)
-Sau khi các notebook được chạy hoàn tất trên GPU, kịch bản này hỗ trợ người quản trị cập nhật kết quả:
-
-```bash
-python scripts/publish_executed_notebooks.py \
-    --evidence-dir /duong/dan/den/evidence \
-    --archive-dir /duong/dan/ngoai_repo/archive \
-    --dry-run
-```
-
-Kịch bản kiểm tra đầy đủ danh mục 13 notebook, đối chiếu mã băm `source_sha256` với `revision_draft`, xác minh số lượng và thứ tự cell code, kiểm tra trước va chạm tệp lưu trữ (preflight collision check), sao lưu notebook cũ ra ngoài repo và sao chép nguyên byte các notebook đã chạy để bảo toàn hình ảnh đính kèm.
+- `scripts/prepare_official_dataset.py`: giải nén và kiểm tra cấu trúc bộ dữ liệu của lớp.
+- `scripts/evaluate_predictions.py`: tính Macro-F1 cho tệp dự đoán khi có nhãn tham chiếu.
