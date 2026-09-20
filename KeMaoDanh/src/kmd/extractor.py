@@ -24,6 +24,66 @@ NAMES = [
     'border_mean', 'border_std',
 ]
 
+# Report-defined feature groups (Report pp. 8, 10-11)
+# Group 0: File size [0]
+# Group 1: Color / Intensity [1:19]
+# Group 2: Texture / Residual [19:28]
+# Group 3: Spatial Center / Border [28:32]
+LR_GROUPS = {
+    'filesize': NAMES[0:1],
+    'color': NAMES[1:19],
+    'texture': NAMES[19:28],
+    'center_border': NAMES[28:32],
+}
+
+# The 9 ablation probes tested in Figure 7 of the report
+LR_ABLATIONS = {
+    'full32': NAMES,
+    'filesize_only': NAMES[0:1],
+    'color_only': NAMES[1:19],
+    'texture_only': NAMES[19:28],
+    'center_border_only': NAMES[28:32],
+    'drop_filesize': NAMES[1:32],
+    'drop_color': NAMES[0:1] + NAMES[19:32],
+    'drop_texture': NAMES[0:19] + NAMES[28:32],
+    'drop_center_border': NAMES[0:28],
+}
+
+LR_ABLATION_ALIASES = {
+    'full': 'full32',
+    'lr': 'full32',
+    'no_filesize': 'drop_filesize',
+    'no_spatial': 'drop_center_border',
+    'all': 'full32',
+    'filesize': 'filesize_only',
+    'color': 'color_only',
+    'texture': 'texture_only',
+    'center_border': 'center_border_only',
+    'spatial': 'center_border_only',
+    'spatial_only': 'center_border_only',
+    'drop_spatial': 'drop_center_border',
+}
+
+
+def resolve_lr_ablation_name(variant: str) -> str:
+    """Resolve shorthand alias to canonical LR ablation name."""
+    v = str(variant).strip()
+    return LR_ABLATION_ALIASES.get(v, v)
+
+
+def get_lr_features(variant: str) -> list[str]:
+    """Retrieve the exact list of feature names for an LR ablation probe."""
+    canonical = resolve_lr_ablation_name(variant)
+    if canonical not in LR_ABLATIONS:
+        valid = ', '.join(sorted(LR_ABLATIONS.keys()))
+        raise ValueError(f"Unknown LR ablation '{variant}'. Available: {valid}")
+    return list(LR_ABLATIONS[canonical])
+
+
+def list_lr_ablations() -> list[str]:
+    """Return sorted list of all 9 canonical LR ablation probe names."""
+    return sorted(LR_ABLATIONS.keys())
+
 
 def extract_file_size_features(path: Path) -> list[float]:
     """Feature 0: log-transformed file size in bytes."""

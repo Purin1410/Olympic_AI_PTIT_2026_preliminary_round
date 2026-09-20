@@ -14,6 +14,7 @@ from .config import Config
 from .core import PACKAGE, split_fold, write_json, sha256, metric, read_csv, environment
 from .data import Pairs, make_loader, fit_normalization
 from .models import model_for, train_mode, head_name, logits, objective, predict_pairs
+from .subsets import sample_train_subset, sample_smoke_train
 
 
 def atomic_save(path, value):
@@ -72,6 +73,17 @@ def train_one_fold(c, runtime, run_name=None, train_frame=None, valid_frame=None
         raise ValueError("Train/validation overlap.")
     if purpose != "smoke" and (not tr.inner_fold.ne(c.fold).all() or not va.inner_fold.eq(c.fold).all()):
         raise ValueError("Full-fold run must honor the frozen validation fold.")
+
+    # Apply sampling per SUBSET_RULE or unified smoke protocol
+    if purpose == "smoke":
+        if c.train_fraction < 1.0 or c.fixed_updates > 0:
+            c = replace(c, fixed_updates=4, fixed_epochs=True, warmup=0, epochs=2)
+        else:
+            c = replace(c, epochs=min(c.epochs, 2), warmup=min(c.warmup, 1))
+        tr = sample_smoke_train(tr, fold=c.fold, max_pairs=64, fraction=c.train_fraction)
+    elif c.train_fraction < 1.0:
+        tr = sample_train_subset(tr, fraction=c.train_fraction, fold=c.fold)
+
     name = run_name or time.strftime("full_%Y%m%d_%H%M%S") + "_" + uuid.uuid4().hex[:6]
     if Path(name).name != name:
         raise ValueError("run_name must be a single directory name.")
@@ -79,7 +91,8 @@ def train_one_fold(c, runtime, run_name=None, train_frame=None, valid_frame=None
     folder.mkdir(parents=True, exist_ok=False)
     source_hashes = {p.name: sha256(p) for p in (PACKAGE / "src/kmd").glob("*.py")}
     contract = dict(id=name, config=asdict(c), train_ids=tr.pair_id.tolist(), validation_ids=va.pair_id.tolist(),
-                    purpose=purpose, result_kind="new_run", code_sha256=source_hashes, holdout_evaluated=False)
+                    purpose=purpose, is_smoke=(purpose == "smoke"), result_kind="new_run",
+                    code_sha256=source_hashes, holdout_evaluated=False)
     job_hash = hashlib.sha256(json.dumps(contract, sort_keys=True).encode()).hexdigest()
     contract["job_hash"] = job_hash
     write_json(folder / "job.json", contract)
@@ -179,7 +192,8 @@ def train_one_fold(c, runtime, run_name=None, train_frame=None, valid_frame=None
         recorded = read_csv(folder / "development.csv")
         reload_error = float(np.abs(reloaded.p - recorded.p).max())
         assert reload_error < 1e-6
-        result = dict(status="passed", result_kind="new_run", purpose=purpose, best_epoch=best_epoch, completed_epochs=len(history),
+        result = dict(status="passed", result_kind="new_run", purpose=purpose, is_smoke=(purpose == "smoke"),
+                      best_epoch=best_epoch, completed_epochs=len(history),
                       train_pairs=len(tr), validation_pairs=len(va), optimizer_steps=steps,
                       elapsed_seconds=time.monotonic() - begin, wall_seconds_including_setup=time.monotonic() - wall_start,
                       peak_allocated_MiB=torch.cuda.max_memory_allocated() / 2**20, peak_reserved_MiB=torch.cuda.max_memory_reserved() / 2**20,

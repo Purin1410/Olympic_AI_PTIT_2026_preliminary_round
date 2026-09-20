@@ -13,3 +13,12 @@
 **/build/
 **/dist/
 .DS_Store
+.agent_context/
+.pytest_cache/
+**/.pytest_cache/
+**/*.tmp
+**/*.pt
+**/*.joblib
+
+# Approved source drafts stay local; publish the executed main notebooks.
+KeMaoDanh/notebooks/revision_draft/

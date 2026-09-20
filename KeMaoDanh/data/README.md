@@ -1,13 +1,33 @@
-# Dữ liệu người học tự cung cấp
+# Chuẩn bị dữ liệu
 
-Đặt dataset gốc trong `train/` và bộ cần dự đoán trong `test/`, hoặc đặt `DATA_ROOT`/`TEST_ROOT`.
-Mỗi thư mục chứa `pairs.csv` và các ảnh được CSV tham chiếu bằng đường dẫn tương đối.
-Train bắt buộc có `pair_id,image_0,image_1,fake_position`. Test chỉ cần ba cột đầu.
-`fake_position=0` là trái giả, `1` là phải giả; không có lớp "cả hai thật".
+Từ thư mục `KeMaoDanh`, giải nén gói `data.zip` của lớp:
 
-Code chỉ chọn 800 cặp theo `../configs/development_split.csv`; file này không chứa ảnh hay nhãn.
-Dùng đúng bản dataset tương ứng, không tự đổi ID hoặc thay ảnh dưới cùng tên.
-Các nhãn/ảnh của 200 cặp ngoài development không được đưa vào fit hay đánh giá.
-Ở bước test, nếu CSV có thêm cột nhãn thì cột đó cũng bị bỏ qua.
+```bash
+uv run --locked --extra cu128 python scripts/prepare_official_dataset.py --zip-path data.zip --dest-dir data
+```
 
-Không đặt dataset/zip/model trong Git. `.gitignore` bỏ qua mọi nội dung data trừ file hướng dẫn này.
+Dùng `--extra cpu` thay `--extra cu128` nếu chỉ chạy baseline. Script giữ nguyên byte ảnh, kiểm tra đường dẫn trước khi giải nén và bỏ qua notebook baseline nằm trong ZIP. Sau lệnh trên, gói của lớp tạo cấu trúc:
+
+```text
+KeMaoDanh/data/data/
+├── train/pairs.csv
+├── train/images/...
+├── public_test/pairs.csv
+├── public_test/images/...
+└── private_test/private_test/
+    ├── pairs.csv
+    └── images/...
+```
+
+Notebook tìm dữ liệu ở cấu trúc này hoặc `KeMaoDanh/data/train`. Mặc định tìm public test trước. Nếu data nằm cạnh repo hoặc ở Kaggle input, đặt đường dẫn tới thư mục chứa manifest:
+
+```bash
+export DATA_ROOT=/duong/dan/den/train
+export TEST_ROOT=/duong/dan/den/public_test
+```
+
+`DATA_ROOT` phải có `pairs.csv` với `pair_id,image_0,image_1,fake_position`; các đường dẫn ảnh tính từ thư mục đó. `TEST_ROOT` dùng `pairs.csv` không cần nhãn. Pipeline không đọc `pairs_results.csv` để suy diễn.
+
+Khi không có test, notebook vẫn huấn luyện và đánh giá OOF nhưng không xuất submission. Nếu đã đặt `TEST_ROOT` mà đường dẫn sai, code báo lỗi để bạn sửa.
+
+800 ID trong `configs/development_split.csv` dùng cho phát triển, chia thành ba fold. 200 cặp giữ lại không được dùng để fit hay tính điểm trong các notebook này. Dữ liệu, ZIP, checkpoint và output đều nằm ngoài phần đưa lên Git.
