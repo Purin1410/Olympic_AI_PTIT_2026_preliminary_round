@@ -6,7 +6,26 @@ Kho lưu trữ mã nguồn giải pháp và chuỗi bài giảng thực nghiệm
 
 Mỗi mẫu dữ liệu là một cặp gồm hai bức ảnh chân dung (`image_0` và `image_1`), trong đó có đúng một ảnh thật và một ảnh giả mạo. Hệ thống học cách so sánh các đặc trưng thị giác và dấu vết kỹ thuật số giữa hai bức ảnh để dự đoán nhãn vị trí của ảnh giả: `fake_position` thuộc tập {0, 1}.
 
-Tài liệu chi tiết: [Mô tả bài toán](docs/challenge.md), [Kiến trúc pipeline và mã nguồn](docs/pipeline.md), [Nguồn của kết quả đã chạy](docs/execution.md).
+Tài liệu chi tiết: [Mô tả bài toán](docs/challenge.md), [Kiến trúc pipeline và mã nguồn](docs/pipeline.md), [Nguồn của kết quả đã chạy](docs/execution.md), [sơ đồ tổng quan](../assets/README.md).
+
+## Cấu trúc thư mục
+
+```text
+KeMaoDanh/
+├── README.md                 # Hướng dẫn của riêng bài Kẻ mạo danh
+├── notebooks/                # 13 notebook từ nhập môn đến pipeline hoàn chỉnh
+├── src/kmd/                  # Mã nguồn được các notebook import trực tiếp
+├── configs/                  # Cấu hình mô hình và development split cố định
+├── scripts/                  # Chuẩn bị dữ liệu và đánh giá dự đoán
+├── docs/                     # Mô tả bài toán, pipeline và nguồn kết quả
+├── data/                     # Dữ liệu cục bộ, không đưa lên Git
+├── artifacts/models/         # Checkpoint theo từng lượt chạy, không đưa lên Git
+├── outputs/                  # Dự đoán và submission, không đưa lên Git
+├── pyproject.toml
+└── uv.lock
+```
+
+Toàn bộ hướng dẫn cài đặt và chạy bên dưới đều bắt đầu từ thư mục `KeMaoDanh/`. Khi clone repo, cần giữ nguyên cả thư mục này để notebook tìm thấy gói `kmd`, configs và các file hỗ trợ.
 
 ---
 
