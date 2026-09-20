@@ -1,0 +1,15 @@
+**/__pycache__/
+**/.ipynb_checkpoints/
+**/.venv/
+**/data/*
+**/data.zip
+!**/data/README.md
+**/artifacts/models/*
+!**/artifacts/models/.gitkeep
+**/artifacts/analysis/*
+**/outputs/*
+!**/outputs/.gitkeep
+**/*.egg-info/
+**/build/
+**/dist/
+.DS_Store
