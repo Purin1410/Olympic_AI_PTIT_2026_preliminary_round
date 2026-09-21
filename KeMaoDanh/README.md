@@ -2,18 +2,36 @@
 
 Output và hình hiện có đến từ [lượt chạy đầy đủ ngày 20/09/2026](docs/execution.md).
 
-Kho lưu trữ mã nguồn giải pháp và chuỗi bài giảng thực nghiệm cho bài toán **Kẻ mạo danh (The Impostor)** trong khuôn khổ vòng sơ loại Olympic AI PTIT 2026.
+Kho lưu trữ mã nguồn giải pháp và chuỗi bài thực nghiệm cho bài toán **Kẻ mạo danh (The Impostor)** trong khuôn khổ vòng sơ loại Olympic AI PTIT 2026.
 
-Mỗi mẫu dữ liệu là một cặp gồm hai bức ảnh chân dung (`image_0` và `image_1`), trong đó có đúng một ảnh thật và một ảnh giả mạo. Hệ thống học cách so sánh các đặc trưng thị giác và dấu vết kỹ thuật số giữa hai bức ảnh để dự đoán nhãn vị trí của ảnh giả: `fake_position` thuộc tập {0, 1}.
+Mỗi mẫu dữ liệu là một cặp gồm hai bức ảnh chân dung (`image_0` và `image_1`), trong đó có đúng một ảnh thật và một ảnh giả mạo. Mô hình cần so sánh các đặc trưng thị giác và dấu vết kỹ thuật số giữa hai bức ảnh để dự đoán nhãn vị trí của ảnh giả: `fake_position` thuộc tập {0, 1}.
 
 Tài liệu chi tiết: [Mô tả bài toán](docs/challenge.md), [Kiến trúc pipeline và mã nguồn](docs/pipeline.md), [Nguồn của kết quả đã chạy](docs/execution.md), [sơ đồ tổng quan](../assets/README.md).
+
+## Bắt đầu từ đâu?
+
+Chọn notebook theo mục đích của bạn:
+
+| Bạn muốn... | Bắt đầu ở đây |
+| --- | --- |
+| Học cách giải từ đầu | Đọc **8 notebook chính, từ 00 đến 07**, bắt đầu với [bài toán và dữ liệu](notebooks/00_problem_and_data.ipynb). Mỗi bài giải thích vì sao thử một ý tưởng, cách viết code và kết quả thu được. |
+| Chạy lại từ dữ liệu đến bài nộp | Mở [pipeline_end_to_end](notebooks/pipeline_end_to_end.ipynb) sau khi cài môi trường và chuẩn bị dữ liệu. Các bước chạy được gom trong một notebook. |
+| Tìm hiểu thêm một thử nghiệm | Chọn phụ lục A-D theo chủ đề quan tâm. Phần này là tùy chọn, bạn không cần đọc hết để theo các bài chính. |
+
+Nếu mới bắt đầu, bạn nên đi theo ba chặng học tập:
+
+- **Chặng 1 (00-02):** Hiểu bài toán, khám phá dữ liệu và xây dựng baseline với Logistic Regression.
+- **Chặng 2 (03-04):** Huấn luyện mạng CNN pretrained và so sánh các phương pháp đưa ảnh vào mạng (native crop và resampled).
+- **Chặng 3 (05-07):** Sàng lọc backbone, phân tích lỗi, đánh giá điều kiện blend mô hình và xuất bài nộp.
+
+Các notebook đã lưu bảng kết quả và hình để bạn đọc trước khi tự chạy. Khi chạy lần lượt các bài, giữ cùng một `KMD_RUN_ID` để bài sau tìm được kết quả của bài trước.
 
 ## Cấu trúc thư mục
 
 ```text
 KeMaoDanh/
 ├── README.md                 # Hướng dẫn của riêng bài Kẻ mạo danh
-├── notebooks/                # 13 notebook từ nhập môn đến pipeline hoàn chỉnh
+├── notebooks/                # 8 bài chính, 4 phụ lục tùy chọn và 1 pipeline tổng
 ├── src/kmd/                  # Mã nguồn được các notebook import trực tiếp
 ├── configs/                  # Cấu hình mô hình và development split cố định
 ├── scripts/                  # Chuẩn bị dữ liệu và đánh giá dự đoán
@@ -25,7 +43,7 @@ KeMaoDanh/
 └── uv.lock
 ```
 
-Toàn bộ hướng dẫn cài đặt và chạy bên dưới đều bắt đầu từ thư mục `KeMaoDanh/`. Khi clone repo, cần giữ nguyên cả thư mục này để notebook tìm thấy gói `kmd`, configs và các file hỗ trợ.
+Toàn bộ hướng dẫn cài đặt và chạy bên dưới đều bắt đầu từ thư mục `KeMaoDanh/`. Khi clone repo, bạn cần giữ nguyên cấu trúc thư mục này để notebook tìm thấy gói `kmd`, configs và các file hỗ trợ.
 
 ---
 
@@ -90,9 +108,11 @@ export TEST_ROOT=/duong/dan/den/data/private_test/private_test
 
 ---
 
-## 3. Danh mục 13 Notebook Thực hành
+## 3. Chọn notebook để học hoặc chạy
 
-Mỗi bài nối các bước: `Quan sát -> Đặt câu hỏi -> Can thiệp kiểm soát -> Diễn giải kết quả -> Quyết định tiếp theo`.
+### Chuỗi 8 notebook chính: 00-07
+
+Các bài nối từ quan sát dữ liệu đến đặt giả thuyết, thử nghiệm và đọc kết quả để quyết định bước tiếp theo.
 
 | STT | Notebook | Nội dung trọng tâm | Đầu vào | Đầu ra chính |
 |:---:|---|---|---|---|
@@ -104,11 +124,28 @@ Mỗi bài nối các bước: `Quan sát -> Đặt câu hỏi -> Can thiệp ki
 | **05** | [05_backbone_and_selection](notebooks/05_backbone_and_selection.ipynb) | Mốc đối chứng `center60_cap48`, sàng lọc 6 cấu hình, shortlist 2 challenger, xác nhận qua 3 seed, chọn mô hình đơn winner động | Train 3 Folds | Bảng sàng lọc, shortlist và `single_selection.json` |
 | **06** | [06_errors_and_blend](notebooks/06_errors_and_blend.ipynb) | Ma trận 4 nhóm đúng/sai giữa winner và native, thử blend 50/50, cổng Selection Gate +0.005 qua 3 seed, bỏ self-blend nếu winner là native | 3 Seeds x 3 Folds | Bảng blend và `submission_decision.json` |
 | **07** | [07_private_and_submission](notebooks/07_private_and_submission.ipynb) | Khóa quyết định vào `review_freeze.json`, đối chiếu private nếu có, hai chiến lược: `fold_ensemble` (mặc định) hoặc `refit_all` (1.000 cặp) | Models + Test | Bảng đối chiếu private và tệp `submission.csv` |
+
+### Chạy lại bằng notebook tổng hợp
+
+Notebook [pipeline_end_to_end](notebooks/pipeline_end_to_end.ipynb) chạy các bước sàng lọc mô hình, xác nhận qua seed, thử blend, chốt lựa chọn và xuất submission khi có tập test. Bạn có thể chọn chạy notebook này thay cho việc thực thi lần lượt các bài chính. Nếu đã chạy xong 00-07, bạn không cần chạy thêm bản tổng hợp.
+
+### 4 phụ lục mở rộng (tùy chọn)
+
+Bốn phụ lục mở rộng các thử nghiệm: **A** về biểu diễn ảnh và fine-tuning, **B** về hàm mục tiêu và ghép cặp dữ liệu, **C** về lượng dữ liệu, **D** về tăng cường dữ liệu (augmentation). Bạn có thể chọn từng phần để đọc thêm; các bài chính không yêu cầu chạy phụ lục.
+
+<details>
+<summary>Xem nội dung 4 phụ lục</summary>
+
+| Phụ lục | Notebook | Nội dung trọng tâm | Đầu vào | Đầu ra chính |
+|:---:|---|---|---|---|
 | **A** | [extension_a_representations](notebooks/extension_a_representations.ipynb) | Frozen Embedding + LR, Partial vs Full fine-tuning, Top-2 vs Mean pooling, ResNet-18 trên ảnh RGB vs Gaussian/NPR residual | Train 3 Folds | Bảng đối chứng mở rộng về biểu diễn và kiến trúc |
 | **B** | [extension_b_objectives_and_repair](notebooks/extension_b_objectives_and_repair.ipynb) | Khảo sát 4 biến thể hàm mất mát ở 19 epoch terminal (image, pairwise, mixed, re-pairing) trên DenseNet-121 3-fold OOF | Train 3 Folds | Bảng so sánh hàm mục tiêu và kỹ thuật ghép cặp lại |
 | **C** | [extension_c_data_scaling](notebooks/extension_c_data_scaling.ipynb) | Khảo sát quy mô dữ liệu 25%, 50%, 100% train dưới cùng ngân sách cố định 391 gradient updates terminal trên EfficientNet-B2 | Train Subsets | Đường cong tăng trưởng theo quy mô dữ liệu |
 | **D** | [extension_d_resize_augmentation](notebooks/extension_d_resize_augmentation.ipynb) | Tăng cường dữ liệu co giãn ngẫu nhiên Resize Augmentation 90-100% trên EfficientNet-B2 (đối chứng b2 chuẩn vs b2_resize) | Train 3 Folds | Bảng đánh giá ảnh hưởng của phép co giãn ngẫu nhiên |
-| **⚡** | [pipeline_end_to_end](notebooks/pipeline_end_to_end.ipynb) | Điều phối toàn diện theo giao thức hiện hành: PROFILE baseline/full, sàng lọc, xác nhận 3 seed, thử blend, khóa freeze, xuất bài | Train (+ Test) | Toàn bộ artifacts và tệp `submission.csv` chuẩn |
+
+</details>
+
+Nếu muốn đưa cả kết quả phụ lục vào bảng đối chiếu private ở bài 07, hãy chạy các phụ lục trước bước khóa quyết định và đặt `KMD_INCLUDE_EXTENSIONS=1`. Nếu chỉ chạy các bài chính, giữ mặc định `0`.
 
 ---
 

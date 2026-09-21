@@ -6,9 +6,11 @@ Kho lưu trữ tổng hợp lời giải và notebook thực hành cho các bài
 
 ### Kẻ mạo danh
 
-Phân loại vị trí ảnh giả trong một cặp ảnh chân dung. Chuỗi bài học đi từ khám phá dữ liệu, Logistic Regression và CNN pretrained đến so sánh vùng cắt, lựa chọn backbone, phân tích lỗi, thử blend và xuất submission.
+Bài toán phân loại vị trí ảnh giả trong cặp ảnh chân dung. Chuỗi bài học hướng dẫn bạn qua từng bước: khám phá dữ liệu, baseline Logistic Regression, fine-tuning CNN, so sánh vùng cắt ảnh, chọn backbone, phân tích lỗi, thử nghiệm blend mô hình và xuất bài nộp.
 
-Xem [hướng dẫn, môi trường và 13 notebook của bài Kẻ mạo danh](KeMaoDanh/README.md).
+Nếu mới học, bạn hãy bắt đầu với 8 notebook chính từ 00 đến 07. Khi đã hiểu cách giải và muốn chạy lại, dùng notebook pipeline tổng hợp. Bốn phụ lục A-D dành cho những thử nghiệm bạn muốn tìm hiểu thêm.
+
+Xem [cách chọn notebook và hướng dẫn chạy bài Kẻ mạo danh](KeMaoDanh/README.md).
 
 ### Bài toán thứ hai
 
