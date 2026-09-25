@@ -1,9 +1,9 @@
 # Chuẩn bị dữ liệu
 
-Từ thư mục `KeMaoDanh`, giải nén gói `data.zip` của lớp:
+Từ thư mục `KeMaoDanh`, giải nén gói `the_imposter.zip` của lớp:
 
 ```bash
-uv run --locked --extra cu128 python scripts/prepare_official_dataset.py --zip-path data.zip --dest-dir data
+uv run --locked --extra cu128 python scripts/prepare_official_dataset.py --zip-path the_imposter.zip --dest-dir data
 ```
 
 Dùng `--extra cpu` thay `--extra cu128` nếu chỉ chạy baseline. Script giữ nguyên byte ảnh, kiểm tra đường dẫn trước khi giải nén và bỏ qua notebook baseline nằm trong ZIP. Sau lệnh trên, gói của lớp tạo cấu trúc:
@@ -19,7 +19,7 @@ KeMaoDanh/data/data/
     └── images/...
 ```
 
-Notebook tìm dữ liệu ở cấu trúc này hoặc `KeMaoDanh/data/train`. Mặc định tìm public test trước. Nếu data nằm cạnh repo hoặc ở Kaggle input, đặt đường dẫn tới thư mục chứa manifest:
+Notebook tìm dữ liệu ở cấu trúc này, biến thể Windows có thêm một lớp `data/` (`KeMaoDanh/data/data/data/...`), hoặc `KeMaoDanh/data/train`. Mặc định tìm public test trước. Nếu data nằm cạnh repo hoặc ở Kaggle input, đặt đường dẫn tới thư mục chứa manifest:
 
 ```bash
 export DATA_ROOT=/duong/dan/den/train
