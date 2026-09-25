@@ -3,6 +3,7 @@
 **/.venv/
 **/data/*
 **/data.zip
+**/the_imposter.zip
 !**/data/README.md
 **/artifacts/models/*
 !**/artifacts/models/.gitkeep
