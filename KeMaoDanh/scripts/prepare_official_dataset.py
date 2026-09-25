@@ -1,7 +1,7 @@
 """Prepare and validate official competition dataset from ZIP or directory.
 
 Extracts official ZIP while preserving raw image bytes, validates path safety,
-resolves nested roots (data/train, data/public_test, data/private_test/private_test),
+resolves nested roots (including data/data/train and extra data/ wrappers),
 and strictly isolates test inference from groundtruth files (pairs_results.csv).
 """
 import argparse
