@@ -84,19 +84,19 @@ uv run --locked --extra cu128 jupyter lab
 
 ---
 
-## 2. Chuẩn bị Dữ liệu từ file data.zip được cung cấp cho lớp
+## 2. Chuẩn bị Dữ liệu từ file the_imposter.zip được cung cấp cho lớp
 
-Khi nhận được **file data.zip được cung cấp cho lớp**, người học sử dụng kịch bản xử lý dữ liệu an toàn:
+Khi nhận được **file the_imposter.zip được cung cấp cho lớp**, người học sử dụng kịch bản xử lý dữ liệu an toàn:
 
 ```bash
 # Đối với môi trường GPU:
-uv run --locked --extra cu128 python scripts/prepare_official_dataset.py --zip-path data.zip --dest-dir data
+uv run --locked --extra cu128 python scripts/prepare_official_dataset.py --zip-path the_imposter.zip --dest-dir data
 
 # Đối với môi trường CPU:
-# uv run --locked --extra cpu python scripts/prepare_official_dataset.py --zip-path data.zip --dest-dir data
+# uv run --locked --extra cpu python scripts/prepare_official_dataset.py --zip-path the_imposter.zip --dest-dir data
 ```
 
-Kịch bản tự động xử lý các cấu trúc thư mục lồng nhau thường gặp trong gói dữ liệu của lớp (như `data/data/train` và `data/private_test/private_test`), bảo đảm toàn vẹn từng byte ảnh JPEG gốc và kiểm tra an toàn chống tấn công Zip Slip.
+Kịch bản tự động xử lý các cấu trúc thư mục lồng nhau thường gặp trong gói dữ liệu của lớp (như `data/data/train`, `data/data/data/train` và `data/private_test/private_test`), bảo đảm toàn vẹn từng byte ảnh JPEG gốc và kiểm tra an toàn chống tấn công Zip Slip.
 
 Nếu lưu trữ dữ liệu tại thư mục ngoài dự án, bạn có thể thiết lập các biến môi trường:
 ```bash
