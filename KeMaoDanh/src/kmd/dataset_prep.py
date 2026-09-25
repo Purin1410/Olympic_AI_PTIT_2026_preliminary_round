@@ -5,7 +5,7 @@ Follows official ZIP specifications:
 - Validates against Zip Slip path traversal and malicious filenames
 - Rejects symbolic links and special files; skips bundled notebooks
 - Performs full preflight validation before writing any files to disk
-- Resolves official nested directories (including private_test/private_test)
+- Resolves official nested directories, including extra data/ wrappers and private_test/private_test
 - Separates evaluation ground truth (pairs_results.csv) from inference inputs
 - Validates manifests meaningfully while gracefully accepting absent test sets
 """
@@ -139,19 +139,23 @@ def discover_dataset_roots(base_dir: Path | str) -> Dict[str, Optional[Path]]:
     candidates_train = [
         base / "train",
         base / "data" / "train",
+        base / "data" / "data" / "train",
         base,
     ]
     candidates_public = [
         base / "public_test",
         base / "data" / "public_test",
+        base / "data" / "data" / "public_test",
         base / "test",
     ]
     candidates_private = [
-        # Official nested structure: data/private_test/private_test/pairs.csv
+        # Official archives may add one or two data/ wrappers before private_test.
         base / "private_test" / "private_test",
         base / "data" / "private_test" / "private_test",
+        base / "data" / "data" / "private_test" / "private_test",
         base / "private_test",
         base / "data" / "private_test",
+        base / "data" / "data" / "private_test",
     ]
 
     train_root = next((p for p in candidates_train if (p / "pairs.csv").is_file()), None)
