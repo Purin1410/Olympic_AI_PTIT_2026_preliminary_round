@@ -1,0 +1,7 @@
+{
+  "schema_version": 1,
+  "default_mode": "replay",
+  "reference_pair": {"rgb": "reference_artifacts/rgb_oof.csv", "highpass": "reference_artifacts/highpass_oof.csv", "provenance": "reference_artifacts/provenance.json"},
+  "label_map": {"0": "Real", "1": "Fake"},
+  "default_threshold": 0.5
+}

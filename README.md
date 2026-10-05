@@ -1,28 +1,44 @@
 # Olympic AI PTIT 2026 - Vòng sơ loại
 
-Kho lưu trữ tổng hợp lời giải và notebook thực hành cho các bài toán trong vòng sơ loại Olympic AI PTIT 2026. Mỗi bài được đặt trong một thư mục riêng, có README, dữ liệu đầu vào, mã nguồn và quy trình thực nghiệm độc lập.
+Repo gồm lời giải và notebook thực hành cho hai bài toán phân loại ảnh chân dung: **Kẻ Mạo Danh** và **AI Là AI**. Mỗi bài có hướng dẫn riêng, code dùng chung và các notebook để học từng bước hoặc chạy toàn bộ quy trình.
 
-## Các bài toán
+## Chọn bài để bắt đầu
 
-### Kẻ mạo danh
+| Bài toán | Đầu vào và nhiệm vụ | Hướng dẫn |
+| --- | --- | --- |
+| Kẻ Mạo Danh | Một cặp ảnh có đúng một ảnh thật và một ảnh giả. Dự đoán vị trí ảnh giả trong cặp. | [Mở bài Kẻ Mạo Danh](KeMaoDanh/README.md) |
+| AI Là AI | Một ảnh chân dung. Phân loại ảnh thật hay ảnh do AI tạo ra. | [Mở bài AI Là AI](AI_LA_AI/README.md) |
 
-Bài toán phân loại vị trí ảnh giả trong cặp ảnh chân dung. Chuỗi bài học hướng dẫn bạn qua từng bước: khám phá dữ liệu, baseline Logistic Regression, fine-tuning CNN, so sánh vùng cắt ảnh, chọn backbone, phân tích lỗi, thử nghiệm blend mô hình và xuất bài nộp.
+## Kẻ Mạo Danh
 
-Nếu mới học, bạn hãy bắt đầu với 8 notebook chính từ 00 đến 07. Khi đã hiểu cách giải và muốn chạy lại, dùng notebook pipeline tổng hợp. Bốn phụ lục A-D dành cho những thử nghiệm bạn muốn tìm hiểu thêm.
+Bài học bắt đầu từ việc khám phá dữ liệu và xây dựng mô hình cơ sở với Logistic Regression. Sau đó, bạn sẽ thử fine-tuning CNN, so sánh vùng cắt ảnh, chọn backbone và phân tích lỗi trước khi kết hợp mô hình và xuất bài nộp.
 
-Xem [cách chọn notebook và hướng dẫn chạy bài Kẻ mạo danh](KeMaoDanh/README.md).
+![Sơ đồ Kẻ Mạo Danh: xử lý hai ảnh, chấm điểm từng ảnh và so sánh để tìm vị trí ảnh giả](assets/figures/ke_mao_danh_overview.png)
 
-### Bài toán thứ hai
+Sơ đồ mô tả cách mô hình xử lý một cặp ảnh khi dự đoán và cách dùng nhãn trong quá trình huấn luyện.
 
-Nội dung sẽ được bổ sung trong một thư mục ngang hàng khi hoàn thiện.
+Nếu mới học, hãy đi lần lượt qua **8 notebook chính từ 00 đến 07**. Notebook `pipeline_end_to_end.ipynb` gom các bước để chạy lại toàn bộ lời giải; bốn phụ lục A-D dành cho những thử nghiệm muốn tìm hiểu thêm.
 
-## Cấu trúc repository
+Xem [hướng dẫn cài đặt, dữ liệu và chọn notebook](KeMaoDanh/README.md).
+
+## AI Là AI
+
+Bài học đi từ khám phá dữ liệu và cách tính Macro-F1 đến việc so sánh các cách xử lý ảnh. Lời giải dùng hai nhánh ResNet34: nhánh RGB nhận vùng cắt giữ nguyên pixel gốc, nhánh High-pass nhận phần chênh lệch giữa ảnh gốc và ảnh làm mờ Gaussian. Xác suất của hai nhánh được lấy trung bình trước khi phân loại.
+
+![Sơ đồ AI Là AI: cắt vùng trung tâm 358 × 358, chạy hai nhánh RGB và High-pass rồi lấy trung bình xác suất](assets/figures/ai_la_ai_overview.png)
+
+Bạn có thể học lần lượt **bài 1 đến bài 3**, rồi mở `00_pipeline_end_to_end.ipynb` để chạy từ dữ liệu đến tệp nộp bài. Phụ lục 4 dùng các kết quả đã lưu để thảo luận về những thử nghiệm chưa đem lại cải thiện như mong đợi.
+
+Xem [hướng dẫn cài đặt, chuẩn bị dữ liệu và nội dung từng notebook](AI_LA_AI/README.md).
+
+## Cấu trúc repo
 
 ```text
 .
 ├── README.md
-├── assets/       # Tài liệu và sơ đồ dùng chung
-└── KeMaoDanh/    # Lời giải và notebook của bài Kẻ mạo danh
+├── assets/       # Tài liệu và hình minh họa dùng chung
+├── KeMaoDanh/    # Code và notebook bài Kẻ Mạo Danh
+└── AI_LA_AI/     # Code và notebook bài AI Là AI
 ```
 
-Mỗi bài toán mới sẽ được thêm thành một thư mục độc lập ở cấp root theo cùng cách tổ chức.
+Hãy giữ nguyên cấu trúc thư mục khi tải repo để notebook tìm được code, cấu hình và các tệp hỗ trợ. Hướng dẫn cài đặt và chuẩn bị dữ liệu nằm trong README của từng bài.

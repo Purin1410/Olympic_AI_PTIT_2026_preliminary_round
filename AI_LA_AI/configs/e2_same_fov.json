@@ -1,0 +1,17 @@
+{
+  "schema_version": 1,
+  "seed": 2026,
+  "folds": [0, 1],
+  "epochs": 15,
+  "batch_size": 16,
+  "accumulation": 2,
+  "backbone_lr": 0.00015,
+  "head_lr": 0.00075,
+  "weight_decay": 0.0001,
+  "crop": 358,
+  "resampled_size": 224,
+  "interpolation": "bilinear",
+  "antialias": true,
+  "checkpoint_policy": "terminal",
+  "note": "Protocol for Native 358 versus resampled 358-to-224-to-358. Keep this controlled comparison separate from the RGB/High-pass end-to-end pipeline."
+}

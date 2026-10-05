@@ -1,0 +1,37 @@
+{
+  "schema_version": 1,
+  "assets": {
+    "train_split": {
+      "destination": "assets/splits/train_folds.csv",
+      "sha256": "b590ab0ff9904f8df0bfaa4a4d60d37c1056fa7271decbc27d78bda1bcbdc47f",
+      "size_bytes": 64027,
+      "kind": "file",
+      "sources": []
+    },
+    "train_images": {
+      "root": "data",
+      "destination": "train/images",
+      "kind": "directory",
+      "expected_count": 2000,
+      "suffixes": [".jpg", ".jpeg", ".png"],
+      "sources": []
+    },
+    "test_images": {
+      "root": "data",
+      "destination": "test/images",
+      "kind": "directory",
+      "expected_count": 200,
+      "suffixes": [".jpg", ".jpeg", ".png"],
+      "sources": []
+    },
+    "rgb_checkpoint": {"destination": "artifacts/released/rgb", "kind": "directory", "sources": []},
+    "highpass_checkpoint": {"destination": "artifacts/released/highpass", "kind": "directory", "sources": []}
+  },
+  "profiles": {
+    "e2e": ["train_split", "train_images", "test_images"],
+    "train": ["train_split", "train_images"],
+    "infer": ["train_split", "test_images"],
+    "replay": ["train_split"],
+    "smoke": ["train_split", "train_images"]
+  }
+}

@@ -1,0 +1,92 @@
+{
+  "protocol": "train-only historical CPU replay; no retraining or private evaluation",
+  "row_count": 2000,
+  "gray_logic": "RGB thumbnail((64,64)); mean(max(pixel)-min(pixel)) < 0.5",
+  "train_image_hash_protocol": "SHA256 of sorted 'file_name SHA256(file_bytes)\\n' lines",
+  "train_images_sha256": "7a28e5a9f9db6e901a13025ff70eb02a624df34ab4c9834777f4c0ce95ead1af",
+  "sources": [
+    {
+      "role": "canonical split",
+      "source": "bai_giang_ai_la_ai/Olympic_AI_PTIT_2026_preliminary_round/AI_LA_AI/assets/splits/train_folds.csv",
+      "sha256": "b590ab0ff9904f8df0bfaa4a4d60d37c1056fa7271decbc27d78bda1bcbdc47f"
+    },
+    {
+      "role": "rgb_prob",
+      "source": "results/r34_center70_native358_jitter410_s2026/oof.csv",
+      "sha256": "b57f9d21b3ca762b21fe1c92116f91edbb2f1d8df736412fce0f63c4a6ff436e"
+    },
+    {
+      "role": "wavelet_prob",
+      "source": "results/overnight_wavelet_r18_native358_s2026/oof.csv",
+      "sha256": "bff2fd52980776b06d251f3d3a52e646e68b5b64cebb9d1ffc2b193525fa6974"
+    },
+    {
+      "role": "edge_base_prob",
+      "source": "results/r34_center70_native358_jitter410_s2026/oof.csv",
+      "sha256": "b57f9d21b3ca762b21fe1c92116f91edbb2f1d8df736412fce0f63c4a6ff436e"
+    },
+    {
+      "role": "edge_weighted_prob",
+      "source": "results/r34_native358_edgeq25_massnorm_w15_s2026/oof.csv",
+      "sha256": "a648d41f37af28bfe70d88ec91a75c9b90f9eb9507c658b0d13f35825809c500"
+    },
+    {
+      "role": "legacy_stack_prob",
+      "source": "results/stack_crossfit_legal7_c1/oof.csv",
+      "sha256": "241b278cddb8beac651aa6be780dc4e2dfba763a253d4a34dd346ffe7265142c"
+    },
+    {
+      "role": "historical edge_ratio; do not substitute canonical re-audit",
+      "source": "_migrated_5060ti_metadata_20260929/edge_ratio_laplacian64_c0625.csv",
+      "sha256": "22b9dca426136c13ae7262e0179d8e97bb8675e940699499328a692894a4e5a1"
+    },
+    {
+      "role": "promotion gates",
+      "source": "results/r34_native358_edgeq25_massnorm_w15_s2026/promotion_gate.json",
+      "sha256": "2e091d7295990927abf24713951b29fbee120d4d13d6c703755e860a73ee28f1"
+    },
+    {
+      "role": "fold threshold choices",
+      "source": "results/stack7_gray_color_crossfit_calibration/calibration_report.json",
+      "sha256": "0df54c087c37157f59f570e4b47f87d58009dc3735abc9228850e70343f67877"
+    },
+    {
+      "role": "historical audit logic",
+      "source": "calibrate_stack_gray_color.py",
+      "sha256": "4c6464608ece720e477910612e014dcfcac605085cbff46273f14c008df356a3"
+    },
+    {
+      "role": "historical audit logic",
+      "source": "audit_edge_subgroup_weighted_run.py",
+      "sha256": "fdb767550e5be331edafac0b5a5a2e2b5920d1316ecbb675b892f1930f7d0dd7"
+    },
+    {
+      "role": "historical run configuration",
+      "source": "results/r34_center70_native358_jitter410_s2026/config.json",
+      "sha256": "f4f3d54d6c566985ece0a0039d6c6ed1d408a47e20c6f396ced88173e2f2eb2f"
+    },
+    {
+      "role": "historical run configuration",
+      "source": "results/overnight_wavelet_r18_native358_s2026/config.json",
+      "sha256": "66deba237c3706cb8a170608efb1876179af9c45c6497a7757b354ce3d1eea71"
+    },
+    {
+      "role": "historical run configuration",
+      "source": "results/r34_native358_edgeq25_massnorm_w15_s2026/config.json",
+      "sha256": "8247445c9692e40723532e899d056edd04408d2a06850c0ff0f6e0cd4a219d71"
+    },
+    {
+      "role": "hard decisions used only to verify cross-fit replay",
+      "source": "results/stack7_gray_color_crossfit_calibration/oof.csv",
+      "sha256": "5f32d385246d9f5241ce1da66546eae2bd193e0bf49232f6f649005707fc624e"
+    }
+  ],
+  "outputs_sha256": {
+    "edge_subgroup_case.png": "f9b8030de78b88f60f7bb2bd264aa091844275764d3d7698ac51bec2f11755df",
+    "oof_predictions.csv": "c4ff1aef841fa1bb9def78f8f52703178bb37528f0a6d569abbd44fab33fd315",
+    "promotion_gates.json": "2e091d7295990927abf24713951b29fbee120d4d13d6c703755e860a73ee28f1",
+    "threshold_case.png": "58e23924277b9e4be0d534736e9ac79048dbb3d4f7f8e45661fd1da83d84dcce",
+    "threshold_choices.csv": "f45e678659a3f748ba27cdc4786b7c545b2a155c868d45cccf7b99783b097df4",
+    "wavelet_case.png": "bd6675138a77f225f3ca9ff286fd84ce3cc139bdaffd824bb8600d18f4edc9cf"
+  }
+}

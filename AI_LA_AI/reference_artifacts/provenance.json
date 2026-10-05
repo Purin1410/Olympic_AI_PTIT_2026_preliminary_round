@@ -1,0 +1,19 @@
+{
+  "schema_version": 1,
+  "source": "historical development OOF replay",
+  "status": "reference_only_not_new_training",
+  "scope": "2,000 training rows; five folds; labels and fold IDs match the packaged train split",
+  "split_sha256": "b590ab0ff9904f8df0bfaa4a4d60d37c1056fa7271decbc27d78bda1bcbdc47f",
+  "assets": {
+    "rgb_oof.csv": {
+      "sha256": "b57f9d21b3ca762b21fe1c92116f91edbb2f1d8df736412fce0f63c4a6ff436e",
+      "rows": 2000,
+      "source_protocol": "historical development replay; not new training"
+    },
+    "highpass_oof.csv": {
+      "sha256": "b4ebcc248e8534409d1f361e0fac990b4b4ff0f62a9f564cd36d9458c7ce933d",
+      "rows": 2000,
+      "source_protocol": "historical development replay; not new training"
+    }
+  }
+}

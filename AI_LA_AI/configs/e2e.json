@@ -1,0 +1,10 @@
+{
+  "schema_version": 1,
+  "default_modes": {"rgb": "train", "highpass": "train"},
+  "presets": {"rgb": "configs/rgb_native358.json", "highpass": "configs/highpass358.json"},
+  "split_path": "assets/splits/train_folds.csv",
+  "fold": 0,
+  "checkpoint_sources": {"rgb": null, "highpass": null},
+  "ensemble": {"method": "probability_mean", "weights": [0.5, 0.5], "threshold": 0.5},
+  "submission": {"expected_count": 200, "columns": ["file_name", "category_id"], "member": "submission.csv"}
+}

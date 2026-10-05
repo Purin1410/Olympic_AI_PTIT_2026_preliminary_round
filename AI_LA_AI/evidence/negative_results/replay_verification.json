@@ -1,0 +1,52 @@
+{
+  "rows": 2000,
+  "wavelet": {
+    "fixes": 30,
+    "breaks": 183,
+    "net errors (B − A)": 153
+  },
+  "fake_low_edge": {
+    "n": 248,
+    "baseline_fn": 17,
+    "weighted_fn": 18
+  },
+  "real_low_edge": {
+    "n": 397,
+    "baseline_fp": 10,
+    "weighted_fp": 11
+  },
+  "gates": {
+    "G1_mechanism": false,
+    "G2_collateral": false,
+    "G3_stack": false
+  },
+  "gray_median": 0.485,
+  "color_median": 0.51,
+  "threshold_macro_f1_percent": [
+    96.69978878648233,
+    96.39963996399639,
+    96.74981717721623
+  ],
+  "crossfit_transitions": {
+    "fixes": 2,
+    "breaks": 8,
+    "net errors (B − A)": 6
+  },
+  "median_transitions": {
+    "fixes": 2,
+    "breaks": 1,
+    "net errors (B − A)": -1
+  },
+  "python": "3.12.3",
+  "pandas": "3.0.6",
+  "status": "passed",
+  "scope": "isolated fresh local CPU kernel; historical replay only",
+  "executed_code_cells": 8,
+  "notebook_assertions": 14,
+  "png_display_outputs": 3,
+  "bundle_hashes": "passed",
+  "wall_seconds": 1.7638,
+  "code_seconds": 0.6968,
+  "source_sha256": "67eaa4cf5bbb653b24af0d17a3b743697f2f2a311d7906998c010e2292dcc6da",
+  "bundle_manifest_sha256": "cae503e54206e36fb69e6c4aa77ed607766d41176457588227ae10b14787d658"
+}

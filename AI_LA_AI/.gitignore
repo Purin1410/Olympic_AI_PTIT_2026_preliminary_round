@@ -1,0 +1,15 @@
+__pycache__/
+*.py[cod]
+.venv/
+.ipynb_checkpoints/
+.pytest_cache/
+.ruff_cache/
+data/**
+!data/.gitkeep
+!data/negative_results/
+!data/negative_results/**
+artifacts/**
+!artifacts/.gitkeep
+outputs/**
+!outputs/.gitkeep
+*.partial

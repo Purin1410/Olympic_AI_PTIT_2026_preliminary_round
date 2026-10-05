@@ -1,0 +1,3 @@
+# Colab usually provides a matched torch/torchvision pair; the package checks it.
+ipykernel>=6.25,<7
+nbformat>=5.9,<6
