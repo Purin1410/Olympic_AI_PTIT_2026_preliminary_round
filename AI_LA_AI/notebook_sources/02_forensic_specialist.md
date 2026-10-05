@@ -6,26 +6,43 @@
 Ta sẽ viết `highpass_view`, xem ảnh sau khi lọc và dùng biểu diễn này làm đầu vào cho ResNet34. Kết quả sẽ được so sánh với nhánh RGB ở bài 3.
 
 <!-- ailaai-cell:01:code -->
-"""Colab bootstrap copied into the first code cell of each notebook."""
 from pathlib import Path
+import importlib
 import os
 import subprocess
 import sys
 
 URL = "https://github.com/Purin1410/Olympic_AI_PTIT_2026_preliminary_round.git"
 REF = os.environ.get("AILAAI_RELEASE_REF", "main")
-REPO = Path("/content/Olympic_AI_PTIT_2026_preliminary_round")
-if not REPO.exists():
-    subprocess.run(["git", "clone", "--depth", "1", "--branch", REF, URL, str(REPO)], check=True)
-TASK = REPO / "AI_LA_AI"
-subprocess.run([sys.executable, "-m", "pip", "install", "-q", "-r", str(TASK / "requirements-colab.txt"), "-e", str(TASK)], check=True)
+# Reuse a local checkout when the notebook is opened from this repository.
+TASK = next((p for p in [Path.cwd(), *Path.cwd().parents]
+             if (p / "src/ailaai").is_dir() and (p / "pyproject.toml").is_file()), None)
+if TASK is None:
+    REPO = Path("/content" if Path("/content").is_dir() else Path.cwd()) / "Olympic_AI_PTIT_2026_preliminary_round"
+    if not REPO.exists():
+        subprocess.run(["git", "clone", "--depth", "1", "--branch", REF, URL, str(REPO)], check=True)
+    TASK = REPO / "AI_LA_AI"
+else:
+    REPO = TASK.parent
+if not (TASK / "src/ailaai").is_dir():
+    raise FileNotFoundError(f"Không tìm thấy package AI Là AI trong {TASK}.")
+subprocess.run([sys.executable, "-m", "pip", "install", "-q", "-r",
+                str(TASK / "requirements-colab.txt"), "-e", str(TASK)], check=True)
+src_path = str((TASK / "src").resolve())
+if src_path not in sys.path:
+    sys.path.insert(0, src_path)
+importlib.invalidate_caches()
+import ailaai
+if Path(ailaai.__file__).resolve().parent != TASK.resolve() / "src/ailaai":
+    raise RuntimeError("Phiên đang dùng bản ailaai ở thư mục khác. Khởi động lại phiên rồi chạy từ đầu.")
+print("Đã sẵn sàng:", TASK)
 
 <!-- ailaai-cell:02:code -->
 from ailaai.config import Workspace
 from ailaai.resources import check_environment
 RUN_ID = "lesson_nb2_v1"
 ws = Workspace.from_root(TASK, run_id=RUN_ID)
-check_environment(profile="e2e")
+check_environment(profile="train")
 print(ws.summary())
 
 <!-- ailaai-cell:03:markdown -->
@@ -38,12 +55,9 @@ Xem các tham số trong `configs/highpass358.json`: kích thước nhân Gaussi
 <!-- ailaai-cell:04:code -->
 from dataclasses import replace
 from ailaai.config import load_config
-from ailaai.resources import prepare_resources, download_dataset
+from ailaai.resources import prepare_resources
 from ailaai.data import load_train_manifest, load_fold_split, decode_rgb
 from ailaai.visuals import show_views
-
-# Tự động tải dataset từ Google Drive nếu chưa có
-download_dataset(ws)
 
 prepare_resources(ws, TASK / "configs/resources.json", profile="train")
 train = load_train_manifest(ws)
@@ -85,8 +99,8 @@ show_views(example, {"RGB Native 358": rgb, "High-pass": filtered})
 Hàm `highpass_view` vừa xem được truyền vào `fit_fold`. ResNet34 nhận ảnh High-pass làm đầu vào.
 
 Chọn cách chạy:
-- `RUN_TRAIN = False` và `MODE = "train"`: bỏ qua huấn luyện; `run` sẽ là `None`.
-- `RUN_TRAIN = True` và `MODE = "train"`: huấn luyện mô hình, phù hợp khi dùng Colab có GPU.
+- Mặc định `RUN_TRAIN = True` và `MODE = "train"`: huấn luyện đủ 15 epoch trên fold 0 với GPU T4.
+- `RUN_TRAIN = False` và `MODE = "train"`: bỏ qua huấn luyện.
 - `MODE = "load"`: nạp lượt chạy đã lưu nếu có checkpoint tương ứng.
 
 Khi có lượt chạy, cell hiển thị phần tổng hợp kết quả.
@@ -98,7 +112,7 @@ MODEL_SPEC = dict(cfg.model)
 def student_model_factory(*, initialize):
     return build_model(MODEL_SPEC["backbone"], MODEL_SPEC["weights"], initialize=initialize)
 MODE = "train"
-RUN_TRAIN = False
+RUN_TRAIN = True
 if MODE == "train" and RUN_TRAIN:
     run = fit_fold(ws, cfg, branch="highpass", train_rows=fit_rows, val_rows=val_rows,
                    model_factory=student_model_factory, view_fn=highpass_view,

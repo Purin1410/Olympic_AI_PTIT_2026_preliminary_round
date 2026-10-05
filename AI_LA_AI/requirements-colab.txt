@@ -1,3 +1,2 @@
-# Colab usually provides a matched torch/torchvision pair; the package checks it.
-ipykernel>=6.25,<7
-nbformat>=5.9,<6
+# Runtime dependencies are installed by the editable package.
+# Keep the Colab-managed kernel and matched Torch/Torchvision installation.

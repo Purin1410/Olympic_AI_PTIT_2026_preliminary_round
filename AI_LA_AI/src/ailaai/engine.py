@@ -45,7 +45,7 @@ class RunInfo:
     def summary(self) -> dict[str, Any]:
         """Return compact run information for a notebook."""
         return {"run_id": self.run_id, "branch": self.branch, "epochs": len(self.curves),
-                "checkpoint": str(self.checkpoint_path), "checkpoint_sha256": self.metadata.get("checkpoint_sha256"),
+                "checkpoint": str(self.checkpoint_path),
                 "validation_rows": len(self.val_predictions.rows),
                 "last_validation_macro_f1": float(self.curves.val_macro_f1.iloc[-1]) if len(self.curves) else None}
 
@@ -242,6 +242,15 @@ def _optimizer(model: nn.Module, cfg: TrainConfig) -> torch.optim.Optimizer:
     return torch.optim.AdamW(groups, weight_decay=cfg.weight_decay)
 
 
+def _run_directory(workspace: Workspace, branch: str, resolved: dict[str, Any]) -> Path:
+    base = workspace.artifact_root / branch
+    config = base / "config.json"
+    if not config.is_file() or json.loads(config.read_text()) == resolved:
+        return base
+    suffix = hashlib.sha256(json.dumps(resolved, sort_keys=True).encode()).hexdigest()[:12]
+    return workspace.artifact_root / f"{branch}_{suffix}"
+
+
 def fit_fold(
     workspace: Workspace,
     cfg: TrainConfig,
@@ -260,19 +269,26 @@ def fit_fold(
         raise ValueError("branch must be rgb, highpass, or resampled.")
     if train_rows.empty or val_rows.empty or set(train_rows.file_name) & set(val_rows.file_name):
         raise ValueError("Training and validation rows must be nonempty and disjoint.")
-    run_dir = workspace.artifact_root / branch
-    run_dir.mkdir(parents=True, exist_ok=True)
     resolved = _resolved_config(workspace, cfg, branch, train_rows, val_rows, model_factory, view_fn, view_spec, model_spec)
+    run_dir = _run_directory(workspace, branch, resolved)
+    run_dir.mkdir(parents=True, exist_ok=True)
+    print(f"Lượt chạy {branch}: {run_dir}", flush=True)
     config_path = run_dir / "config.json"
     checkpoint_path = run_dir / "last.pt"
     if checkpoint_path.exists() and not config_path.exists():
         raise ValueError(f"Checkpoint has no saved recipe; move it aside or use a new run_id: {run_dir}")
     if config_path.exists() and json.loads(config_path.read_text()) != resolved:
         raise ValueError(f"Run configuration changed; choose a new run_id. Existing run: {run_dir}")
+    status_path = run_dir / "run_status.json"
+    status = json.loads(status_path.read_text()) if status_path.is_file() else {}
+    if status.get("status") == "complete" and checkpoint_path.is_file():
+        print("Đã có lượt chạy hoàn tất; đang nạp kết quả.", flush=True)
+        return load_run(workspace, cfg, branch, train_rows, val_rows, model_factory,
+                        view_fn, view_spec, model_spec, checkpoint_source=checkpoint_path)
     write_json(config_path, resolved)
     device = torch.device("cuda")
     _seed(cfg.seed)
-    model = model_factory(initialize=True).to(device)
+    model = model_factory(initialize=not checkpoint_path.is_file()).to(device)
     optimizer = _optimizer(model, cfg)
     scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(optimizer, T_max=cfg.epochs)
     scaler = torch.amp.GradScaler("cuda")
@@ -286,9 +302,9 @@ def fit_fold(
         optimizer.load_state_dict(state["optimizer"])
         scheduler.load_state_dict(state["scheduler"])
         scaler.load_state_dict(state["scaler"])
-        torch.set_rng_state(state["torch_rng"])
+        torch.set_rng_state(state["torch_rng"].cpu())
         if state.get("cuda_rng"):
-            torch.cuda.set_rng_state_all(state["cuda_rng"])
+            torch.cuda.set_rng_state_all([value.cpu() for value in state["cuda_rng"]])
         np.random.set_state(state["numpy_rng"])
         random.setstate(state["python_rng"])
         start_epoch = int(state["epoch"])
@@ -328,7 +344,11 @@ def fit_fold(
                         "val_loss": val_loss, "val_macro_f1": val_f1, "seconds": time.monotonic() - tick,
                         "backbone_lr": optimizer.param_groups[0]["lr"], "head_lr": optimizer.param_groups[1]["lr"]})
         _save_curves(curves_path, records)
-        torch.save(_checkpoint_state(model, optimizer, scheduler, scaler, epoch + 1), checkpoint_path)
+        pending_checkpoint = checkpoint_path.with_suffix(".pt.partial")
+        torch.save(_checkpoint_state(model, optimizer, scheduler, scaler, epoch + 1), pending_checkpoint)
+        pending_checkpoint.replace(checkpoint_path)
+        print(f"{branch} | epoch {epoch + 1}/{cfg.epochs} | loss {total_loss / seen:.4f} | "
+              f"val F1 {val_f1:.4f} | {records[-1]['seconds']:.1f}s", flush=True)
     if len(records) < cfg.epochs:
         raise RuntimeError("Training ended before the configured terminal epoch.")
     prediction_meta = {
@@ -344,6 +364,7 @@ def fit_fold(
     pd.DataFrame(val_rows).to_csv(run_dir / "validation_manifest.csv", index=False)
     write_json(run_dir / "run_status.json", {"status": "complete", "epochs": cfg.epochs,
                                              "checkpoint_sha256": prediction_meta["checkpoint_sha256"]})
+    write_json(workspace.artifact_root / f"{branch}_active.json", {"directory": run_dir.name})
     result = RunInfo(workspace.run_id, branch, run_dir, checkpoint_path, pd.DataFrame(records), predictions, prediction_meta)
     del model, optimizer, scheduler, scaler
     torch.cuda.empty_cache()
@@ -362,7 +383,8 @@ def _load_checkpoint(
     model_spec: Mapping[str, Any],
     checkpoint_source: str | Path | None,
 ) -> tuple[RunInfo, nn.Module, torch.device]:
-    run_dir = workspace.artifact_root / branch
+    resolved = _resolved_config(workspace, cfg, branch, train_rows, val_rows, model_factory, view_fn, view_spec, model_spec)
+    run_dir = _run_directory(workspace, branch, resolved)
     checkpoint = Path(checkpoint_source) if checkpoint_source else run_dir / "last.pt"
     if not checkpoint.is_absolute():
         checkpoint = workspace.root / checkpoint
@@ -406,6 +428,7 @@ def load_run(
                                           model_factory, view_fn, view_spec, model_spec, checkpoint_source)
     if not run.val_predictions.rows.file_name.isin(val_rows.file_name).all() or len(run.val_predictions.rows) != len(val_rows):
         raise ValueError("Stored validation predictions do not cover the current fold.")
+    write_json(workspace.artifact_root / f"{branch}_active.json", {"directory": run.run_dir.name})
     del model
     if device.type == "cuda":
         torch.cuda.empty_cache()

@@ -13,7 +13,7 @@ source .venv/bin/activate
 python -m pip install -e .
 ```
 
-Nếu dùng Google Colab, mở một notebook trong thư mục `notebooks/` và chạy cell cài đặt ở đầu bài. Tệp `requirements-colab.txt` cũng cài package này. Nếu notebook yêu cầu khởi động lại phiên sau khi cài Torch hoặc Torchvision, hãy thực hiện trước khi chạy tiếp.
+Nếu dùng Google Colab, mở một notebook trong thư mục `notebooks/`. Với bài 0, 1 và 2, chọn **Runtime → Change runtime type → T4 GPU**, rồi bấm **Run all**. Bài 3 và phụ lục 4 chạy được trên CPU. Cell đầu tự chuẩn bị môi trường; cell dữ liệu tự tải và nhận diện thư mục ảnh. Tệp `requirements-colab.txt` cũng cài package này. Nếu notebook yêu cầu khởi động lại phiên sau khi cài Torch hoặc Torchvision, hãy thực hiện trước khi chạy tiếp.
 
 
 ## Chuẩn bị dữ liệu
@@ -27,7 +27,7 @@ Bảng chia dữ liệu huấn luyện thành các fold nằm ở `assets/splits
 | Huấn luyện | `data/train/images/` | `data/train/manifest.csv` | `file_name,label` |
 | Kiểm thử | `data/test/images/` | `data/test/manifest.csv` | `file_name` |
 
-Cả hai bảng có thể thêm cột `path`. Nếu lưu dữ liệu ở nơi khác, đặt biến môi trường `AILAAI_DATA_ROOT` trỏ đến thư mục đó.
+Cả hai bảng có thể thêm cột `path`. Nếu lưu dữ liệu ở nơi khác, đặt biến môi trường `AILAAI_DATA_ROOT` trỏ đến thư mục đó trước khi tạo workspace. Trên Colab, bạn có thể để mặc định: bộ nạp tự xử lý ZIP từ link trong bài, kể cả khi bên trong đã có lớp thư mục `data/`.
 
 ## Chọn notebook cho bài học
 
@@ -43,7 +43,7 @@ Bạn có thể học lần lượt từ bài 1 đến bài 3, rồi mở bài 0
 
 Phụ lục 4 có 18 cell và tính lại kết quả từ dữ liệu dự đoán đã đóng gói trong `data/negative_results/`. Bài này chạy trên CPU, chỉ cần `pandas` và `IPython`; không cần huấn luyện lại hay tải trọng số mô hình.
 
-Để chạy phụ lục, mở notebook từ thư mục package hoặc `notebooks/`. Nếu dùng Colab, đặt thư mục `data/negative_results/` cạnh notebook. Thông tin nguồn nằm trong gói dữ liệu.
+Để chạy phụ lục, mở notebook từ thư mục package hoặc `notebooks/`. Nếu dùng Colab, notebook tự lấy gói kết quả từ repo. Thông tin nguồn nằm trong gói dữ liệu.
 
 ## Cập nhật notebook từ nguồn Markdown
 
@@ -58,3 +58,5 @@ python -m compileall src/ailaai/
 Lệnh `--write` tạo lại notebook từ nguồn Markdown. Lệnh `--check` báo nếu nội dung notebook khác với bản được tạo từ nguồn. Lệnh cuối kiểm tra cú pháp các tệp Python trong package.
 
 Kết quả mỗi lượt chạy được lưu ở `artifacts/<run_id>/` và `outputs/<run_id>/`. Không commit các thư mục kết quả này vào repo.
+
+Bài 1 và 2 mặc định huấn luyện đủ 15 epoch trên fold 0. Khi chạy lại cùng cấu hình, chương trình tiếp tục checkpoint còn dở hoặc nạp kết quả đã hoàn tất. Nếu đổi cấu hình, kết quả được lưu ở thư mục riêng. Private Test được chọn rõ ràng; bộ nạp không tự thay bằng Public Test.

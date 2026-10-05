@@ -174,7 +174,9 @@ def load_validation_pair(workspace: Workspace, source: str = "reference") -> tup
         branches = []
         expected: pd.DataFrame | None = None
         for branch in ("rgb", "highpass"):
-            prediction_path = workspace.artifact_root / branch / "val_predictions.csv"
+            active = workspace.artifact_root / f"{branch}_active.json"
+            directory = read_json(active)["directory"] if active.is_file() else branch
+            prediction_path = workspace.artifact_root / directory / "val_predictions.csv"
             table = PredictionTable.load(prediction_path)
             if table.meta.get("run_id") != workspace.run_id:
                 raise ValueError(f"{branch} validation predictions belong to another run.")

@@ -37,20 +37,29 @@ import json
 import math
 import statistics
 
+import importlib.util
+import subprocess
+import sys
+missing = [name for name in ("pandas", "IPython") if importlib.util.find_spec(name) is None]
+if missing:
+    subprocess.run([sys.executable, "-m", "pip", "install", "-q", *missing], check=True)
 import pandas as pd
 from IPython.display import display, Image
 
-SEARCH_ROOTS = [Path.cwd(), *Path.cwd().parents, Path("/content")]
-DATA_DIR = next(
-    (root / "data" / "negative_results"
-     for root in SEARCH_ROOTS
-     if (root / "data" / "negative_results").is_dir()),
-    None,
-)
-if DATA_DIR is None:
-    raise FileNotFoundError(
-        "Không tìm thấy data/negative_results/. Hãy đặt bundle cạnh notebook."
-    )
+# Tự lấy gói kết quả khi notebook được mở riêng trên Colab.
+import os
+import subprocess
+import sys
+TASK = next((p for p in [Path.cwd(), *Path.cwd().parents]
+             if (p / "data/negative_results/oof_predictions.csv").is_file()), None)
+if TASK is None:
+    REPO = Path("/content" if Path("/content").is_dir() else Path.cwd()) / "Olympic_AI_PTIT_2026_preliminary_round"
+    if not REPO.exists():
+        subprocess.run(["git", "clone", "--depth", "1", "--branch",
+                        os.environ.get("AILAAI_RELEASE_REF", "main"),
+                        "https://github.com/Purin1410/Olympic_AI_PTIT_2026_preliminary_round.git", str(REPO)], check=True)
+    TASK = REPO / "AI_LA_AI"
+DATA_DIR = TASK / "data/negative_results"
 
 OOF_PATH = DATA_DIR / "oof_predictions.csv"
 THRESHOLD_PATH = DATA_DIR / "threshold_choices.csv"

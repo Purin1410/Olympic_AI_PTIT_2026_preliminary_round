@@ -71,23 +71,8 @@ def _resolve_paths(frame: pd.DataFrame, image_root: Path) -> pd.DataFrame:
 
 
 def _find_test_image_dir(workspace: Workspace) -> Path | None:
-    candidates = [
-        workspace.data_root / "test" / "images",
-        workspace.data_root / "test",
-        workspace.data_root / "private_test" / "private_test" / "images",
-        workspace.data_root / "private_test" / "images",
-        workspace.data_root / "public_test" / "images",
-        workspace.data_root / "who_is_AI" / "data" / "private_test" / "private_test" / "images",
-        workspace.data_root / "who_is_AI" / "data" / "private_test" / "images",
-        workspace.data_root / "who_is_AI" / "private_test" / "private_test" / "images",
-        workspace.data_root / "who_is_AI" / "private_test" / "images",
-        workspace.data_root.parent / "who_is_AI" / "data" / "private_test" / "private_test" / "images",
-        workspace.data_root.parent / "who_is_AI" / "data" / "private_test" / "images",
-    ]
-    for cand in candidates:
-        if cand.is_dir() and any(p.suffix.lower() in {".jpg", ".jpeg", ".png"} for p in cand.iterdir() if p.is_file()):
-            return cand.resolve()
-    return None
+    from .dataset_setup import find_images, expected_names
+    return find_images(workspace.data_root, "test", expected_names(workspace, "test"))
 
 
 def load_train_manifest(
@@ -137,8 +122,6 @@ def load_test_manifest(workspace: Workspace, manifest_path: str | Path | None = 
     candidates = [Path(manifest_path)] if manifest_path else [
         test_root / "manifest.csv",
         test_root / "test.csv",
-        workspace.data_root / "private_test" / "private_test" / "pair_results.csv",
-        workspace.data_root / "private_test" / "pair_results.csv",
     ]
     source = next((p if p.is_absolute() else workspace.root / p for p in candidates if (p if p.is_absolute() else workspace.root / p).is_file()), None)
     if source is not None:

@@ -108,59 +108,11 @@ def _safe_extract(archive_path: Path, destination: Path, max_unpacked_bytes: int
         raise
 
 
-def download_dataset(
-    workspace: Workspace,
-    file_id: str = "1g_43_Xn-DWYB-k7Yq4XQTr5ZQXZ0UdXq",
-    force: bool = False,
-) -> Path:
-    """Download and extract who_is_AI dataset from Google Drive if not present."""
-    data_root = workspace.data_root
-    check_dirs = [
-        data_root / "train" / "images",
-        data_root / "images",
-        data_root / "who_is_AI" / "data" / "train" / "images",
-        data_root / "who_is_AI" / "train" / "images",
-        data_root.parent / "who_is_AI" / "data" / "train" / "images",
-    ]
-    if not force and any(d.is_dir() and any(d.glob("*.jpg")) for d in check_dirs):
-        return data_root
-
-    data_root.mkdir(parents=True, exist_ok=True)
-    zip_path = data_root / "who_is_AI.zip"
-
-    if not zip_path.is_file() or zip_path.stat().st_size == 0 or force:
-        print("Đang tải bộ dữ liệu who_is_AI từ Google Drive...")
-        url = f"https://drive.google.com/uc?id={file_id}"
-        downloaded = False
-        try:
-            import gdown
-            gdown.download(url, str(zip_path), quiet=False)
-            downloaded = zip_path.is_file() and zip_path.stat().st_size > 0
-        except Exception:
-            pass
-
-        if not downloaded:
-            try:
-                subprocess.run(["gdown", "--id", file_id, "-O", str(zip_path)], check=True)
-                downloaded = zip_path.is_file() and zip_path.stat().st_size > 0
-            except Exception:
-                pass
-
-        if not downloaded:
-            print(
-                f"[Cảnh báo] Không thể tải tự động qua gdown. Bạn có thể tải thủ công từ:\n"
-                f"https://drive.google.com/file/d/{file_id}/view?usp=drive_link\n"
-                f"và đặt tệp ZIP hoặc thư mục giải nén vào {data_root}."
-            )
-            return data_root
-
-    if zip_path.is_file() and zip_path.stat().st_size > 0:
-        print("Đang giải nén bộ dữ liệu...")
-        with zipfile.ZipFile(zip_path, "r") as zf:
-            zf.extractall(data_root)
-        print("Giải nén hoàn tất!")
-
-    return data_root
+def download_dataset(workspace: Workspace, file_id: str = "1g_43_Xn-DWYB-k7Yq4XQTr5ZQXZ0UdXq",
+                     force: bool = False, required: tuple[str, ...] = ("train", "test")) -> Path:
+    """Prepare the published images once, including legacy nested layouts."""
+    from .dataset_setup import prepare_dataset
+    return prepare_dataset(workspace, file_id=file_id, force=force, required=required)
 
 
 def prepare_resources(
@@ -178,6 +130,9 @@ def prepare_resources(
         assets = manifest["assets"]
     except KeyError as exc:
         raise ValueError(f"Unknown resource profile or missing section: {profile}") from exc
+    required = tuple(split for split, name in (("train", "train_images"), ("test", "test_images")) if name in names)
+    if required:
+        download_dataset(workspace, required=required)
     receipts: list[dict[str, Any]] = []
     for name in names:
         if name not in assets:
@@ -185,50 +140,14 @@ def prepare_resources(
         spec = assets[name]
         destination_root = workspace.data_root if spec.get("root") == "data" else workspace.root
         destination = _safe_child(destination_root, str(spec["destination"]))
-        if not destination.exists():
-            if name in ("train_images", "test_images"):
-                download_dataset(workspace)
-            if name == "test_images":
-                candidates = [
-                    destination_root / "private_test" / "private_test" / "images",
-                    destination_root / "private_test" / "images",
-                    destination_root / "public_test" / "images",
-                    destination_root / "who_is_AI" / "data" / "private_test" / "private_test" / "images",
-                    destination_root / "who_is_AI" / "data" / "private_test" / "images",
-                    destination_root / "who_is_AI" / "private_test" / "private_test" / "images",
-                    destination_root / "who_is_AI" / "private_test" / "images",
-                    destination_root.parent / "who_is_AI" / "data" / "private_test" / "private_test" / "images",
-                    destination_root.parent / "who_is_AI" / "data" / "private_test" / "images",
-                ]
-                cand = next((c.resolve() for c in candidates if c.is_dir()), None)
-                if cand is not None:
-                    destination.parent.mkdir(parents=True, exist_ok=True)
-                    try:
-                        destination.symlink_to(cand)
-                    except OSError:
-                        shutil.copytree(cand, destination)
-            elif name == "train_images":
-                candidates = [
-                    destination_root / "images",
-                    destination_root / "who_is_AI" / "data" / "train" / "images",
-                    destination_root / "who_is_AI" / "train" / "images",
-                    destination_root.parent / "who_is_AI" / "data" / "train" / "images",
-                ]
-                cand = next((c.resolve() for c in candidates if c.is_dir()), None)
-                if cand is not None:
-                    destination.parent.mkdir(parents=True, exist_ok=True)
-                    try:
-                        destination.symlink_to(cand)
-                    except OSError:
-                        shutil.copytree(cand, destination)
         if destination.exists():
             receipts.append(_validate_existing(destination, spec, name))
             continue
         sources = list(spec.get("sources", []))
         if not sources:
             raise FileNotFoundError(
-                f"Resource {name} is not available at {destination}; add an approved HTTPS source "
-                "with SHA-256 to configs/resources.json or place the files at the documented path."
+                f"Không tìm thấy dữ liệu {name} tại {destination}. "
+                "Kiểm tra thư mục sau khi giải nén hoặc thêm nguồn tải vào configs/resources.json."
             )
         source = sources[0]
         if isinstance(source, str):
@@ -258,7 +177,7 @@ def check_environment(profile: str = "e2e") -> dict[str, Any]:
         raise RuntimeError("Install the package dependencies and restart the runtime before continuing.") from exc
     cuda_available = bool(torch.cuda.is_available())
     if profile == "train" and not cuda_available:
-        raise RuntimeError("Training requires a CUDA GPU; choose load mode or attach a GPU runtime.")
+        raise RuntimeError("Bài này cần GPU để huấn luyện. Trong Colab, chọn Runtime → Change runtime type → T4 GPU, rồi chạy lại từ đầu.")
     if profile not in {"e2e", "train", "infer", "replay", "smoke"}:
         raise ValueError(f"Unknown environment profile: {profile}")
     return {
@@ -281,9 +200,7 @@ def verify_checkout(repository: str | Path, expected_sha: str | None = None) -> 
         raise RuntimeError(f"Could not inspect the package checkout at {root}.") from exc
     if expected_sha and head != expected_sha:
         raise RuntimeError(f"Checkout revision mismatch: expected {expected_sha}, got {head}.")
-    if dirty.strip():
-        raise RuntimeError("The code checkout has local changes; use a fresh task folder before running.")
-    return {"head": head, "dirty": "false"}
+    return {"head": head, "dirty": "true" if dirty.strip() else "false"}
 
 
 def asset_path(workspace: Workspace, manifest_path: str | Path, asset_name: str) -> Path:
