@@ -79,14 +79,12 @@ def show_learning_curves(curves: pd.DataFrame) -> plt.Figure:
     if not required.issubset(curves.columns):
         raise ValueError(f"Learning curves are missing: {sorted(required - set(curves.columns))}")
     figure, axes = plt.subplots(1, 2, figsize=(11, 4))
-    axes[0].plot(curves.epoch, curves.train_loss, marker="o", label="Train")
-    axes[0].plot(curves.epoch, curves.val_loss, marker="o", label="Validation")
+    axes[0].plot(curves.epoch, curves.train_loss, label="Train")
+    axes[0].plot(curves.epoch, curves.val_loss, label="Validation")
     axes[0].set(xlabel="Epoch", ylabel="Cross-entropy", title="Loss")
     axes[1].plot(curves.epoch, curves.val_macro_f1, marker="o", label="Validation")
     axes[1].set(xlabel="Epoch", ylabel="Macro-F1", ylim=(0, 1), title="Validation score")
     for axis in axes:
-        if curves.epoch.nunique() == 1:
-            axis.set_xticks(curves.epoch)
         axis.legend()
         axis.grid(alpha=0.2)
     figure.tight_layout()

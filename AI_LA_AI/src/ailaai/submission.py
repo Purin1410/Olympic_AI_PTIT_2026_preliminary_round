@@ -50,8 +50,6 @@ def _validate_frame(frame: pd.DataFrame, expected_names: Iterable[str], expected
         missing = sorted(set(names) - set(result.file_name))[:5]
         extra = sorted(set(result.file_name) - set(names))[:5]
         raise ValueError(f"Submission file names differ from test; missing={missing}, extra={extra}.")
-    if not result.category_id.astype(str).isin(["0", "1"]).all():
-        raise ValueError("category_id must contain literal integer labels 0 or 1.")
     labels = pd.to_numeric(result.category_id, errors="coerce")
     if labels.isna().any() or not np.equal(labels, np.floor(labels)).all() or not labels.isin([0, 1]).all():
         raise ValueError("category_id values must be integer labels 0 or 1.")
@@ -78,7 +76,7 @@ def validate_submission(
             if members != ["submission.csv"]:
                 raise ValueError("ZIP must contain exactly one root member named submission.csv.")
             with archive.open("submission.csv") as handle:
-                returned = pd.read_csv(handle, dtype={"file_name": str, "category_id": str})
+                returned = pd.read_csv(handle)
     except zipfile.BadZipFile as exc:
         raise ValueError("Submission is not a readable ZIP archive.") from exc
     returned = _validate_frame(returned, expected_names, expected_count)
