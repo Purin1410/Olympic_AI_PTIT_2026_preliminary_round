@@ -49,6 +49,7 @@ def optimizer_parameter_groups(model: nn.Module, backbone_lr: float, head_lr: fl
             if group not in groups:
                 raise ValueError(f"Unknown optimizer parameter group {group!r}.")
             groups[group].append(parameter)
-    if not groups["head"] or not groups["backbone"]:
-        raise ValueError("Both classifier and backbone optimizer groups must contain parameters.")
-    return [{"params": groups["backbone"], "lr": backbone_lr}, {"params": groups["head"], "lr": head_lr}]
+    if not groups["head"]:
+        raise ValueError("Classifier optimizer group must contain trainable parameters.")
+    return [{"params": params, "lr": lr} for params, lr in
+            [(groups["backbone"], backbone_lr), (groups["head"], head_lr)] if params]

@@ -226,6 +226,11 @@ def _validation_predictions(
                 logits = model(prepared)
                 loss = nn.functional.cross_entropy(logits, target)
             probability = logits.float().softmax(dim=1)[:, 1]
+            if cfg.tta:
+                flipped = _view_batch(images.flip(-1), view_fn, cfg, augment=False)
+                with torch.amp.autocast(device_type=device.type, enabled=device.type == "cuda"):
+                    flip_probability = model(flipped).float().softmax(1)[:, 1]
+                probability = 0.5 * (probability + flip_probability)
             names.extend(file_names)
             labels.extend(target.cpu().tolist())
             probabilities.extend(probability.cpu().tolist())
@@ -259,6 +264,46 @@ def _run_directory(workspace: Workspace, branch: str, resolved: dict[str, Any]) 
     return workspace.artifact_root / f"{branch}_{suffix}"
 
 
+def train_one_epoch(model, epoch_train, optimizer, scaler, cfg, view_fn, device, sample_weights=None):
+    """One explicit optimization epoch, also usable for a bounded CPU exercise."""
+    model.train()
+    if getattr(model, "_freeze_backbone", False):
+        model.eval()
+        model.fc.train()
+    optimizer.zero_grad(set_to_none=True)
+    total_loss = 0.0
+    correct = 0
+    seen = 0
+    accumulation = cfg.accumulation
+    for step, (images, target, file_names) in enumerate(epoch_train):
+        images = images.to(device, non_blocking=True)
+        target = target.to(device, non_blocking=True)
+        prepared = _view_batch(images, view_fn, cfg, augment=True)
+        with torch.amp.autocast(device_type=device.type, enabled=device.type == "cuda"):
+            logits = model(prepared)
+            if sample_weights is not None:
+                losses = nn.functional.cross_entropy(logits, target, label_smoothing=cfg.label_smoothing, reduction="none")
+                weights = losses.new_tensor([sample_weights[name] for name in file_names])
+                loss = (losses * weights).mean()
+            else:
+                loss = nn.functional.cross_entropy(logits, target, label_smoothing=cfg.label_smoothing)
+        if not torch.isfinite(loss):
+            raise FloatingPointError("Training loss is not finite.")
+        loss_value = float(loss.detach())
+        group_start = (step // accumulation) * accumulation
+        batches_per_group = min(accumulation, len(epoch_train) - group_start)
+        scaler.scale(loss / batches_per_group).backward()
+        boundary = (step + 1) % accumulation == 0 or step + 1 == len(epoch_train)
+        if boundary:
+            scaler.step(optimizer)
+            scaler.update()
+            optimizer.zero_grad(set_to_none=True)
+        total_loss += loss_value * len(target)
+        correct += int((logits.detach().argmax(1) == target).sum())
+        seen += len(target)
+    return total_loss, correct, seen
+
+
 def fit_fold(
     workspace: Workspace,
     cfg: TrainConfig,
@@ -270,9 +315,10 @@ def fit_fold(
     view_spec: Mapping[str, Any],
     model_spec: Mapping[str, Any],
     sample_weights: Mapping[str, float] | None = None,
+    *, allow_cpu: bool = False,
 ) -> RunInfo:
     """Fit one branch on the provided training rows and validate each epoch."""
-    if not torch.cuda.is_available():
+    if not torch.cuda.is_available() and not allow_cpu:
         raise RuntimeError("fit_fold needs a CUDA GPU. Use load_run for a released checkpoint.")
     if branch not in {"rgb", "highpass", "resampled", "wavelet", "edge_weighted"}:
         raise ValueError("Unknown training branch.")
@@ -296,12 +342,12 @@ def fit_fold(
         return load_run(workspace, cfg, branch, train_rows, val_rows, model_factory,
                         view_fn, view_spec, model_spec, checkpoint_source=checkpoint_path, sample_weights=sample_weights)
     write_json(config_path, resolved)
-    device = torch.device("cuda")
+    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     _seed(cfg.seed)
     model = model_factory(initialize=not checkpoint_path.is_file()).to(device)
     optimizer = _optimizer(model, cfg)
     scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(optimizer, T_max=cfg.epochs)
-    scaler = torch.amp.GradScaler("cuda")
+    scaler = torch.amp.GradScaler(device.type, enabled=device.type == "cuda")
     validation_loader = make_loader(val_rows, cfg.batch_size, labeled=True, shuffle=False, seed=cfg.seed)
     curves_path = run_dir / "curves.csv"
     start_epoch = 0
@@ -322,42 +368,15 @@ def fit_fold(
     write_json(run_dir / "run_status.json", {"status": "running", "start_epoch": start_epoch, "config_sha256": sha256_file(config_path)})
     for epoch in range(start_epoch, cfg.epochs):
         tick = time.monotonic()
-        model.train()
         epoch_train = make_loader(train_rows, cfg.batch_size, labeled=True, shuffle=True, seed=cfg.seed + epoch)
-        optimizer.zero_grad(set_to_none=True)
-        total_loss = 0.0
-        correct = 0
-        seen = 0
-        accumulation = cfg.accumulation
-        for step, (images, target, file_names) in enumerate(epoch_train):
-            images = images.to(device, non_blocking=True)
-            target = target.to(device, non_blocking=True)
-            prepared = _view_batch(images, view_fn, cfg, augment=True)
-            with torch.amp.autocast(device_type="cuda", dtype=torch.float16, enabled=True):
-                logits = model(prepared)
-                if sample_weights is not None:
-                    losses = nn.functional.cross_entropy(logits, target, label_smoothing=cfg.label_smoothing, reduction="none")
-                    weights = losses.new_tensor([sample_weights[name] for name in file_names])
-                    loss = (losses * weights).mean()
-                else:
-                    loss = nn.functional.cross_entropy(logits, target, label_smoothing=cfg.label_smoothing)
-            loss_value = float(loss.detach())
-            group_start = (step // accumulation) * accumulation
-            batches_per_group = min(accumulation, len(epoch_train) - group_start)
-            scaler.scale(loss / batches_per_group).backward()
-            boundary = (step + 1) % accumulation == 0 or step + 1 == len(epoch_train)
-            if boundary:
-                scaler.step(optimizer)
-                scaler.update()
-                optimizer.zero_grad(set_to_none=True)
-            total_loss += loss_value * len(target)
-            correct += int((logits.detach().argmax(1) == target).sum())
-            seen += len(target)
+        total_loss, correct, seen = train_one_epoch(
+            model, epoch_train, optimizer, scaler, cfg, view_fn, device, sample_weights)
         scheduler.step()
         predictions, val_loss, val_f1 = _validation_predictions(model, validation_loader, cfg, view_fn, device)
         records.append({"epoch": epoch + 1, "train_loss": total_loss / seen, "train_accuracy": correct / seen,
                         "val_loss": val_loss, "val_macro_f1": val_f1, "seconds": time.monotonic() - tick,
-                        "backbone_lr": optimizer.param_groups[0]["lr"], "head_lr": optimizer.param_groups[1]["lr"]})
+                        "backbone_lr": optimizer.param_groups[0]["lr"] if len(optimizer.param_groups) > 1 else 0.0,
+                        "head_lr": optimizer.param_groups[-1]["lr"]})
         _save_curves(curves_path, records)
         pending_checkpoint = checkpoint_path.with_suffix(".pt.partial")
         torch.save(_checkpoint_state(model, optimizer, scheduler, scaler, epoch + 1), pending_checkpoint)

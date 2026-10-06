@@ -33,11 +33,11 @@ class Cell:
 
 
 NOTEBOOKS = {
-    "00_pipeline_end_to_end": (28, 12),
-    "01_eda_baseline_geometry": (17, 8),
-    "02_forensic_specialist": (10, 5),
-    "03_ensemble_threshold_submission": (23, 11),
-    "04_negative_results_and_ablation": (22, 11),
+    "00_pipeline_end_to_end": (65, 29),
+    "01_eda_baseline_geometry": (55, 25),
+    "02_forensic_specialist": (39, 18),
+    "03_ensemble_threshold_submission": (41, 18),
+    "04_negative_results_and_ablation": (51, 24),
 }
 
 
@@ -62,6 +62,35 @@ def _read_cells(path: Path) -> list[Cell]:
 def _write_cells(path: Path, cells: list[Cell]) -> None:
     blocks = [f"<!-- ailaai-cell:{cell.index:02d}:{cell.kind} -->\n{cell.source}" for cell in cells]
     path.write_text("\n\n".join(blocks) + "\n", encoding="utf-8")
+
+
+def sync_source_cells(cells: list[Cell], write: bool) -> bool:
+    """Embed real function bodies as editable cells, with a checked source pointer."""
+    changed = False
+    for cell in cells:
+        if cell.kind != "code" or not cell.source.startswith("# ailaai-source: "):
+            continue
+        marker = cell.source.splitlines()[0]
+        relative, names = marker.removeprefix("# ailaai-source: ").split("::")
+        source_path = ROOT / relative
+        if not source_path.resolve().is_relative_to((ROOT / "src/ailaai").resolve()):
+            raise ValueError("Source cells must refer to src/ailaai.")
+        source = source_path.read_text(encoding="utf-8")
+        lines = source.splitlines()
+        symbols = {node.name: node for node in ast.parse(source).body
+                   if isinstance(node, (ast.FunctionDef, ast.ClassDef))}
+        bodies = []
+        for name in names.split(","):
+            node = symbols[name]
+            first = min([node.lineno] + [d.lineno for d in node.decorator_list])
+            bodies.append("\n".join(lines[first - 1:node.end_lineno]))
+        expected = marker + "\n" + "\n\n\n".join(bodies)
+        if cell.source != expected:
+            if not write:
+                raise ValueError(f"Embedded source differs: {relative}::{names}")
+            cell.source = expected
+            changed = True
+    return changed
 
 
 def _notebook(path: Path, cells: list[Cell]) -> dict:
@@ -95,6 +124,7 @@ def build(write: bool) -> list[Path]:
     for name, (expected_cells, expected_markdown) in NOTEBOOKS.items():
         source_path = SOURCE_ROOT / f"{name}.md"
         cells = _read_cells(source_path)
+        source_changed = sync_source_cells(cells, write)
         if len(cells) != expected_cells or sum(cell.kind == "markdown" for cell in cells) != expected_markdown:
             raise ValueError(f"{name}: expected {expected_cells} cells ({expected_markdown} Markdown).")
         # Every notebook shares the same Colab import and installation setup.
@@ -104,6 +134,8 @@ def build(write: bool) -> list[Path]:
             if not write:
                 raise ValueError(f"{name}: cell 01 differs from notebook_sources/shared/bootstrap.py.")
             cells[1].source = bootstrap
+            source_changed = True
+        if source_changed:
             _write_cells(source_path, cells)
         notebook = _notebook(source_path, cells)
         if name == "03_ensemble_threshold_submission":
