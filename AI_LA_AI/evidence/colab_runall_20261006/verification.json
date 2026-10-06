@@ -1,0 +1,420 @@
+{
+  "date": "2026-10-06",
+  "verified_code_commit": "ba003c7",
+  "verification_surface": "Signed-in Chrome, Colab UI, Run all, rendered cell outputs and execution counters",
+  "coverage": {
+    "unique_notebooks": 5,
+    "unique_code_cells": 50,
+    "train_images": 2000,
+    "fold": 0,
+    "fit_images_per_training_run": 1600,
+    "validation_images_per_training_run": 400,
+    "private_test_images_in_nb0": 200,
+    "configured_terminal_epochs": 15,
+    "submission_validations_in_nb0": 2
+  },
+  "executions": [
+    {
+      "observation": "nb0",
+      "notebook": "00_pipeline_end_to_end.ipynb",
+      "device_observed_in_colab": "T4 GPU",
+      "scenario": "fresh_runtime",
+      "expected_code_cells": 16,
+      "completed_code_cells": 16,
+      "cell_execution_counters": [
+        {
+          "cell_index": 1,
+          "execution_count": 1
+        },
+        {
+          "cell_index": 2,
+          "execution_count": 2
+        },
+        {
+          "cell_index": 4,
+          "execution_count": 3
+        },
+        {
+          "cell_index": 6,
+          "execution_count": 4
+        },
+        {
+          "cell_index": 8,
+          "execution_count": 5
+        },
+        {
+          "cell_index": 10,
+          "execution_count": 6
+        },
+        {
+          "cell_index": 12,
+          "execution_count": 7
+        },
+        {
+          "cell_index": 14,
+          "execution_count": 8
+        },
+        {
+          "cell_index": 16,
+          "execution_count": 9
+        },
+        {
+          "cell_index": 18,
+          "execution_count": 10
+        },
+        {
+          "cell_index": 20,
+          "execution_count": 11
+        },
+        {
+          "cell_index": 22,
+          "execution_count": 12
+        },
+        {
+          "cell_index": 23,
+          "execution_count": 13
+        },
+        {
+          "cell_index": 24,
+          "execution_count": 14
+        },
+        {
+          "cell_index": 26,
+          "execution_count": 15
+        },
+        {
+          "cell_index": 27,
+          "execution_count": 16
+        }
+      ],
+      "python_tracebacks_observed": 0,
+      "colab_execution_active_at_capture": false
+    },
+    {
+      "observation": "nb0-reuse",
+      "notebook": "00_pipeline_end_to_end.ipynb",
+      "device_observed_in_colab": "T4 GPU",
+      "scenario": "completed_run_reuse",
+      "expected_code_cells": 16,
+      "completed_code_cells": 16,
+      "cell_execution_counters": [
+        {
+          "cell_index": 1,
+          "execution_count": 17
+        },
+        {
+          "cell_index": 2,
+          "execution_count": 18
+        },
+        {
+          "cell_index": 4,
+          "execution_count": 19
+        },
+        {
+          "cell_index": 6,
+          "execution_count": 20
+        },
+        {
+          "cell_index": 8,
+          "execution_count": 21
+        },
+        {
+          "cell_index": 10,
+          "execution_count": 22
+        },
+        {
+          "cell_index": 12,
+          "execution_count": 23
+        },
+        {
+          "cell_index": 14,
+          "execution_count": 24
+        },
+        {
+          "cell_index": 16,
+          "execution_count": 25
+        },
+        {
+          "cell_index": 18,
+          "execution_count": 26
+        },
+        {
+          "cell_index": 20,
+          "execution_count": 27
+        },
+        {
+          "cell_index": 22,
+          "execution_count": 28
+        },
+        {
+          "cell_index": 23,
+          "execution_count": 29
+        },
+        {
+          "cell_index": 24,
+          "execution_count": 30
+        },
+        {
+          "cell_index": 26,
+          "execution_count": 31
+        },
+        {
+          "cell_index": 27,
+          "execution_count": 32
+        }
+      ],
+      "python_tracebacks_observed": 0,
+      "colab_execution_active_at_capture": false
+    },
+    {
+      "observation": "nb1",
+      "notebook": "01_eda_baseline_geometry.ipynb",
+      "device_observed_in_colab": "T4 GPU",
+      "scenario": "kernel_restart_and_checkpoint_resume",
+      "expected_code_cells": 9,
+      "completed_code_cells": 9,
+      "cell_execution_counters": [
+        {
+          "cell_index": 1,
+          "execution_count": 1
+        },
+        {
+          "cell_index": 2,
+          "execution_count": 2
+        },
+        {
+          "cell_index": 4,
+          "execution_count": 3
+        },
+        {
+          "cell_index": 6,
+          "execution_count": 4
+        },
+        {
+          "cell_index": 8,
+          "execution_count": 5
+        },
+        {
+          "cell_index": 10,
+          "execution_count": 6
+        },
+        {
+          "cell_index": 12,
+          "execution_count": 7
+        },
+        {
+          "cell_index": 14,
+          "execution_count": 8
+        },
+        {
+          "cell_index": 16,
+          "execution_count": 9
+        }
+      ],
+      "python_tracebacks_observed": 0,
+      "colab_execution_active_at_capture": false
+    },
+    {
+      "observation": "nb1-reuse",
+      "notebook": "01_eda_baseline_geometry.ipynb",
+      "device_observed_in_colab": "T4 GPU",
+      "scenario": "page_reload_and_completed_run_reuse",
+      "expected_code_cells": 9,
+      "completed_code_cells": 9,
+      "cell_execution_counters": [
+        {
+          "cell_index": 1,
+          "execution_count": 10
+        },
+        {
+          "cell_index": 2,
+          "execution_count": 11
+        },
+        {
+          "cell_index": 4,
+          "execution_count": 12
+        },
+        {
+          "cell_index": 6,
+          "execution_count": 13
+        },
+        {
+          "cell_index": 8,
+          "execution_count": 14
+        },
+        {
+          "cell_index": 10,
+          "execution_count": 15
+        },
+        {
+          "cell_index": 12,
+          "execution_count": 16
+        },
+        {
+          "cell_index": 14,
+          "execution_count": 17
+        },
+        {
+          "cell_index": 16,
+          "execution_count": 18
+        }
+      ],
+      "python_tracebacks_observed": 0,
+      "colab_execution_active_at_capture": false
+    },
+    {
+      "observation": "nb2",
+      "notebook": "02_forensic_specialist.ipynb",
+      "device_observed_in_colab": "T4 GPU",
+      "scenario": "fresh_runtime",
+      "expected_code_cells": 5,
+      "completed_code_cells": 5,
+      "cell_execution_counters": [
+        {
+          "cell_index": 1,
+          "execution_count": 1
+        },
+        {
+          "cell_index": 2,
+          "execution_count": 2
+        },
+        {
+          "cell_index": 4,
+          "execution_count": 3
+        },
+        {
+          "cell_index": 6,
+          "execution_count": 4
+        },
+        {
+          "cell_index": 8,
+          "execution_count": 5
+        }
+      ],
+      "python_tracebacks_observed": 0,
+      "colab_execution_active_at_capture": false
+    },
+    {
+      "observation": "nb3",
+      "notebook": "03_ensemble_threshold_submission.ipynb",
+      "device_observed_in_colab": "CPU",
+      "scenario": "fresh_runtime_reference_analysis",
+      "expected_code_cells": 12,
+      "completed_code_cells": 12,
+      "cell_execution_counters": [
+        {
+          "cell_index": 1,
+          "execution_count": 1
+        },
+        {
+          "cell_index": 2,
+          "execution_count": 2
+        },
+        {
+          "cell_index": 4,
+          "execution_count": 3
+        },
+        {
+          "cell_index": 6,
+          "execution_count": 4
+        },
+        {
+          "cell_index": 8,
+          "execution_count": 5
+        },
+        {
+          "cell_index": 10,
+          "execution_count": 6
+        },
+        {
+          "cell_index": 12,
+          "execution_count": 7
+        },
+        {
+          "cell_index": 14,
+          "execution_count": 8
+        },
+        {
+          "cell_index": 16,
+          "execution_count": 9
+        },
+        {
+          "cell_index": 17,
+          "execution_count": 10
+        },
+        {
+          "cell_index": 19,
+          "execution_count": 11
+        },
+        {
+          "cell_index": 21,
+          "execution_count": 12
+        }
+      ],
+      "python_tracebacks_observed": 0,
+      "colab_execution_active_at_capture": false
+    },
+    {
+      "observation": "nb4",
+      "notebook": "04_negative_results_and_ablation.ipynb",
+      "device_observed_in_colab": "CPU",
+      "scenario": "fresh_runtime_reference_analysis",
+      "expected_code_cells": 8,
+      "completed_code_cells": 8,
+      "cell_execution_counters": [
+        {
+          "cell_index": 3,
+          "execution_count": 1
+        },
+        {
+          "cell_index": 5,
+          "execution_count": 2
+        },
+        {
+          "cell_index": 6,
+          "execution_count": 3
+        },
+        {
+          "cell_index": 9,
+          "execution_count": 4
+        },
+        {
+          "cell_index": 10,
+          "execution_count": 5
+        },
+        {
+          "cell_index": 11,
+          "execution_count": 6
+        },
+        {
+          "cell_index": 14,
+          "execution_count": 7
+        },
+        {
+          "cell_index": 15,
+          "execution_count": 8
+        }
+      ],
+      "python_tracebacks_observed": 0,
+      "colab_execution_active_at_capture": false
+    }
+  ],
+  "checkpoint_resume_observation": {
+    "notebook": "01_eda_baseline_geometry.ipynb",
+    "action": "Runtime -> Restart session and run all",
+    "first_epoch_logged_after_restart": 4,
+    "terminal_epochs_in_run_summary": 15,
+    "terminal_validation_macro_f1": 0.934993499349935
+  },
+  "colab_ui_event": {
+    "notebook": "01_eda_baseline_geometry.ipynb",
+    "message": "Could not load the JavaScript files needed to display output.",
+    "training_continued": true,
+    "resolution": "Dismissed dialog; completed training; reloaded page and reran all cells successfully; visually inspected image/crop/FFT output."
+  },
+  "evidence_limits": [
+    "Execution evidence is captured from Colab UI, not independently downloaded checkpoint or executed notebook files.",
+    "Validation results are fold0 train-derived results, not an official Private Test score.",
+    "Checkpoint resume requires runtime files to persist; deleting the runtime removes those files."
+  ]
+}

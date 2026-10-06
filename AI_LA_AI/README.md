@@ -13,7 +13,7 @@ source .venv/bin/activate
 python -m pip install -e .
 ```
 
-Nếu dùng Google Colab, mở một notebook trong thư mục `notebooks/`. Với bài 0, 1 và 2, chọn **Runtime → Change runtime type → T4 GPU**, rồi bấm **Run all**. Bài 3 và phụ lục 4 chạy được trên CPU. Cell đầu tự chuẩn bị môi trường; cell dữ liệu tự tải và nhận diện thư mục ảnh. Tệp `requirements-colab.txt` cũng cài package này. Nếu notebook yêu cầu khởi động lại phiên sau khi cài Torch hoặc Torchvision, hãy thực hiện trước khi chạy tiếp.
+Nếu dùng Google Colab, mở một notebook trong thư mục `notebooks/`. Với bài 0, 1 và 2, chọn **Runtime → Change runtime type → T4 GPU**, rồi bấm **Run all**. Bài 3 và phụ lục 4 chạy được trên CPU. Cell đầu tự chuẩn bị môi trường; cell dữ liệu tự tải và nhận diện thư mục ảnh.
 
 
 ## Chuẩn bị dữ liệu
@@ -60,3 +60,7 @@ Lệnh `--write` tạo lại notebook từ nguồn Markdown. Lệnh `--check` b�
 Kết quả mỗi lượt chạy được lưu ở `artifacts/<run_id>/` và `outputs/<run_id>/`. Không commit các thư mục kết quả này vào repo.
 
 Bài 1 và 2 mặc định huấn luyện đủ 15 epoch trên fold 0. Khi chạy lại cùng cấu hình, chương trình tiếp tục checkpoint còn dở hoặc nạp kết quả đã hoàn tất. Nếu đổi cấu hình, kết quả được lưu ở thư mục riêng. Private Test được chọn rõ ràng; bộ nạp không tự thay bằng Public Test.
+
+Để học tiếp, checkpoint cần còn trong thư mục `artifacts/`. Khởi động lại kernel vẫn giữ các tệp này. Nếu xóa runtime hoặc Colab thu hồi phiên, bạn cần tải lại checkpoint đã lưu ở nơi khác hoặc huấn luyện từ đầu.
+
+Cả năm notebook đã được [chạy kiểm tra trực tiếp trên Colab ngày 06/10/2026](evidence/colab_runall_20261006/README.md), gồm huấn luyện đủ 15 epoch, tạo ZIP nộp bài và học tiếp từ checkpoint sau khi khởi động lại kernel.
