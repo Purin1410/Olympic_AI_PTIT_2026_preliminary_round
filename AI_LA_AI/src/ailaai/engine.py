@@ -143,6 +143,7 @@ def _resolved_config(
     view_fn: ViewFunction,
     view_spec: Mapping[str, Any],
     model_spec: Mapping[str, Any],
+    sample_weights: Mapping[str, float] | None = None,
 ) -> dict[str, Any]:
     if dict(cfg.model) != dict(model_spec):
         raise ValueError("TrainConfig.model and model_spec must describe the same model.")
@@ -150,6 +151,13 @@ def _resolved_config(
     if any(key in view_spec and view_spec.get(key) != value for key, value in expected_view.items()):
         raise ValueError("TrainConfig.view and view_spec must describe the same input transform.")
     recipe = {"view": dict(view_spec), "model": dict(model_spec)}
+    if sample_weights is not None:
+        if set(sample_weights) != set(train_rows.file_name):
+            raise ValueError("Sample weights must cover exactly the training file names.")
+        values = {name: float(sample_weights[name]) for name in sorted(sample_weights)}
+        if any(not np.isfinite(value) or value <= 0 for value in values.values()):
+            raise ValueError("Sample weights must be finite and positive.")
+        recipe["sample_weights"] = values
     return {
         "schema_version": 1,
         "run_id": workspace.run_id,
@@ -261,15 +269,17 @@ def fit_fold(
     view_fn: ViewFunction,
     view_spec: Mapping[str, Any],
     model_spec: Mapping[str, Any],
+    sample_weights: Mapping[str, float] | None = None,
 ) -> RunInfo:
     """Fit one branch on the provided training rows and validate each epoch."""
     if not torch.cuda.is_available():
         raise RuntimeError("fit_fold needs a CUDA GPU. Use load_run for a released checkpoint.")
-    if branch not in {"rgb", "highpass", "resampled"}:
-        raise ValueError("branch must be rgb, highpass, or resampled.")
+    if branch not in {"rgb", "highpass", "resampled", "wavelet", "edge_weighted"}:
+        raise ValueError("Unknown training branch.")
     if train_rows.empty or val_rows.empty or set(train_rows.file_name) & set(val_rows.file_name):
         raise ValueError("Training and validation rows must be nonempty and disjoint.")
-    resolved = _resolved_config(workspace, cfg, branch, train_rows, val_rows, model_factory, view_fn, view_spec, model_spec)
+    resolved = _resolved_config(workspace, cfg, branch, train_rows, val_rows, model_factory, view_fn, view_spec, model_spec, sample_weights)
+    sample_weights = resolved["recipe"].get("sample_weights")
     run_dir = _run_directory(workspace, branch, resolved)
     run_dir.mkdir(parents=True, exist_ok=True)
     print(f"Lượt chạy {branch}: {run_dir}", flush=True)
@@ -284,7 +294,7 @@ def fit_fold(
     if status.get("status") == "complete" and checkpoint_path.is_file():
         print("Đã có lượt chạy hoàn tất; đang nạp kết quả.", flush=True)
         return load_run(workspace, cfg, branch, train_rows, val_rows, model_factory,
-                        view_fn, view_spec, model_spec, checkpoint_source=checkpoint_path)
+                        view_fn, view_spec, model_spec, checkpoint_source=checkpoint_path, sample_weights=sample_weights)
     write_json(config_path, resolved)
     device = torch.device("cuda")
     _seed(cfg.seed)
@@ -319,13 +329,18 @@ def fit_fold(
         correct = 0
         seen = 0
         accumulation = cfg.accumulation
-        for step, (images, target, _) in enumerate(epoch_train):
+        for step, (images, target, file_names) in enumerate(epoch_train):
             images = images.to(device, non_blocking=True)
             target = target.to(device, non_blocking=True)
             prepared = _view_batch(images, view_fn, cfg, augment=True)
             with torch.amp.autocast(device_type="cuda", dtype=torch.float16, enabled=True):
                 logits = model(prepared)
-                loss = nn.functional.cross_entropy(logits, target, label_smoothing=cfg.label_smoothing)
+                if sample_weights is not None:
+                    losses = nn.functional.cross_entropy(logits, target, label_smoothing=cfg.label_smoothing, reduction="none")
+                    weights = losses.new_tensor([sample_weights[name] for name in file_names])
+                    loss = (losses * weights).mean()
+                else:
+                    loss = nn.functional.cross_entropy(logits, target, label_smoothing=cfg.label_smoothing)
             loss_value = float(loss.detach())
             group_start = (step // accumulation) * accumulation
             batches_per_group = min(accumulation, len(epoch_train) - group_start)
@@ -382,15 +397,16 @@ def _load_checkpoint(
     view_spec: Mapping[str, Any],
     model_spec: Mapping[str, Any],
     checkpoint_source: str | Path | None,
+    sample_weights: Mapping[str, float] | None = None,
 ) -> tuple[RunInfo, nn.Module, torch.device]:
-    resolved = _resolved_config(workspace, cfg, branch, train_rows, val_rows, model_factory, view_fn, view_spec, model_spec)
+    resolved = _resolved_config(workspace, cfg, branch, train_rows, val_rows, model_factory, view_fn, view_spec, model_spec, sample_weights)
     run_dir = _run_directory(workspace, branch, resolved)
     checkpoint = Path(checkpoint_source) if checkpoint_source else run_dir / "last.pt"
     if not checkpoint.is_absolute():
         checkpoint = workspace.root / checkpoint
     if not checkpoint.is_file():
         raise FileNotFoundError(f"No checkpoint for {branch}: {checkpoint}; train this branch or configure its release asset.")
-    resolved = _resolved_config(workspace, cfg, branch, train_rows, val_rows, model_factory, view_fn, view_spec, model_spec)
+    resolved = _resolved_config(workspace, cfg, branch, train_rows, val_rows, model_factory, view_fn, view_spec, model_spec, sample_weights)
     config_path = checkpoint.parent / "config.json"
     if not config_path.is_file() or json.loads(config_path.read_text()) != resolved:
         raise ValueError("Checkpoint recipe/split differs from the current notebook; choose the matching config and callables.")
@@ -422,10 +438,11 @@ def load_run(
     view_spec: Mapping[str, Any],
     model_spec: Mapping[str, Any],
     checkpoint_source: str | Path | None = None,
+    sample_weights: Mapping[str, float] | None = None,
 ) -> RunInfo:
     """Load a completed branch after exact config and callable checks."""
     run, model, device = _load_checkpoint(workspace, cfg, branch, train_rows, val_rows,
-                                          model_factory, view_fn, view_spec, model_spec, checkpoint_source)
+                                          model_factory, view_fn, view_spec, model_spec, checkpoint_source, sample_weights)
     if not run.val_predictions.rows.file_name.isin(val_rows.file_name).all() or len(run.val_predictions.rows) != len(val_rows):
         raise ValueError("Stored validation predictions do not cover the current fold.")
     write_json(workspace.artifact_root / f"{branch}_active.json", {"directory": run.run_dir.name})

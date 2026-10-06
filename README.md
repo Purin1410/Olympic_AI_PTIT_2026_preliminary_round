@@ -27,7 +27,7 @@ Bài học đi từ khám phá dữ liệu và cách tính Macro-F1 đến việ
 
 ![Sơ đồ AI Là AI: cắt vùng trung tâm 358 × 358, chạy hai nhánh RGB và High-pass rồi lấy trung bình xác suất](assets/figures/ai_la_ai_overview.png)
 
-Bạn có thể học lần lượt **bài 1 đến bài 3**, rồi mở `00_pipeline_end_to_end.ipynb` để chạy từ dữ liệu đến tệp nộp bài. Phụ lục 4 dùng các kết quả đã lưu để thảo luận về những thử nghiệm chưa đem lại cải thiện như mong đợi.
+Bạn có thể học lần lượt **bài 1 đến bài 3**, rồi mở `00_pipeline_end_to_end.ipynb` để chạy từ dữ liệu đến tệp nộp bài. Bài 4 chạy ba thử nghiệm từ ảnh đến báo cáo so sánh trên GPU, kèm chế độ đọc dự đoán lịch sử trên CPU.
 
 Xem [hướng dẫn cài đặt, chuẩn bị dữ liệu và nội dung từng notebook](AI_LA_AI/README.md).
 

@@ -1,0 +1,22 @@
+{
+  "rows": 2000,
+  "evaluation_rows": 1008,
+  "wavelet": {
+    "A": "rgb_prob",
+    "B": "wavelet_prob",
+    "n": 2000,
+    "A Macro-F1": 0.9539850911695389,
+    "B Macro-F1": 0.8774864928858407,
+    "A errors": 92,
+    "B errors": 245,
+    "fixes": 30,
+    "breaks": 183,
+    "net errors (B - A)": 153
+  },
+  "models_trained": 0,
+  "status": "passed",
+  "scope": "fresh local CPU kernel; reference predictions only",
+  "executed_code_cells": 11,
+  "png_display_outputs": 3,
+  "wall_seconds": 28.086
+}

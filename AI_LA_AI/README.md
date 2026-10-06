@@ -13,7 +13,7 @@ source .venv/bin/activate
 python -m pip install -e .
 ```
 
-Nếu dùng Google Colab, mở một notebook trong thư mục `notebooks/`. Với bài 0, 1 và 2, chọn **Runtime → Change runtime type → T4 GPU**, rồi bấm **Run all**. Bài 3 và phụ lục 4 chạy được trên CPU. Cell đầu tự chuẩn bị môi trường; cell dữ liệu tự tải và nhận diện thư mục ảnh.
+Nếu dùng Google Colab, mở một notebook trong thư mục `notebooks/`. Với bài 0, 1, 2 và chế độ huấn luyện của bài 4, chọn **Runtime → Change runtime type → T4 GPU**, rồi bấm **Run all**. Bài 3 chạy được trên CPU; bài 4 cũng có chế độ `reference` để đọc dự đoán đã lưu. Cell đầu tự chuẩn bị môi trường; cell dữ liệu tự tải và nhận diện thư mục ảnh.
 
 
 ## Chuẩn bị dữ liệu
@@ -39,11 +39,11 @@ Bạn có thể học lần lượt từ bài 1 đến bài 3, rồi mở bài 0
 | `02_forensic_specialist.ipynb` | Tìm hiểu bộ lọc High-pass và cách truyền hàm xử lý ảnh vào phần code huấn luyện dùng chung. |
 | `03_ensemble_threshold_submission.ipynb` | Phân tích dự đoán trên tập validation, kết hợp hai mô hình và kiểm tra tệp ZIP minh họa. |
 | `00_pipeline_end_to_end.ipynb` | Chạy hai nhánh RGB và High-pass, lấy trung bình xác suất và tạo `outputs/<run_id>/submission.zip`. |
-| `04_negative_results_and_ablation.ipynb` | Đọc lại ba thử nghiệm chưa đem lại cải thiện như mong đợi và thảo luận khi nào nên dừng một hướng thử nghiệm. |
+| `04_negative_results_and_ablation.ipynb` | Huấn luyện RGB, Haar và RGB có trọng số; so sánh lỗi và đánh giá ngưỡng trên dữ liệu tách riêng. |
 
-Phụ lục 4 có 18 cell và tính lại kết quả từ dữ liệu dự đoán đã đóng gói trong `data/negative_results/`. Bài này chạy trên CPU, chỉ cần `pandas` và `IPython`; không cần huấn luyện lại hay tải trọng số mô hình.
+Bài 4 tự tải ảnh và mặc định huấn luyện ba nhánh ResNet18 trên T4, mỗi nhánh 15 epoch ở fold 0. Giữ `MODE = "train"` rồi bấm **Run all**. Đổi `FOLDS = [0, 1, 2, 3, 4]` nếu muốn chạy đủ năm fold; đổi `MODE = "reference"` nếu chỉ muốn đọc dự đoán lịch sử trên CPU.
 
-Để chạy phụ lục, mở notebook từ thư mục package hoặc `notebooks/`. Nếu dùng Colab, notebook tự lấy gói kết quả từ repo. Thông tin nguồn nằm trong gói dữ liệu.
+Bảng điểm và hình được tính từ dự đoán của lượt chạy, lưu tại `outputs/lesson_nb4_e2e_v1/`. Checkpoint từng fold nằm trong `artifacts/lesson_nb4_e2e_v1_fold<fold>/`. Chạy lại sẽ tiếp tục checkpoint còn dở hoặc dùng lại lượt hoàn tất. Công thức Haar và đặc trưng Sobel trong bài thực hành được ghi rõ trong notebook; điểm mới không phải điểm tái tạo của các thử nghiệm lịch sử.
 
 ## Cập nhật notebook từ nguồn Markdown
 

@@ -37,7 +37,7 @@ NOTEBOOKS = {
     "01_eda_baseline_geometry": (17, 8),
     "02_forensic_specialist": (10, 5),
     "03_ensemble_threshold_submission": (23, 11),
-    "04_negative_results_and_ablation": (18, 10),
+    "04_negative_results_and_ablation": (22, 11),
 }
 
 
@@ -97,15 +97,14 @@ def build(write: bool) -> list[Path]:
         cells = _read_cells(source_path)
         if len(cells) != expected_cells or sum(cell.kind == "markdown" for cell in cells) != expected_markdown:
             raise ValueError(f"{name}: expected {expected_cells} cells ({expected_markdown} Markdown).")
-        # The CPU-only appendix has its own bundle loader in cell 03.
-        if name != "04_negative_results_and_ablation":
-            if cells[1].kind != "code":
-                raise ValueError(f"{name}: cell 01 must be the common setup code.")
-            if cells[1].source != bootstrap:
-                if not write:
-                    raise ValueError(f"{name}: cell 01 differs from notebook_sources/shared/bootstrap.py.")
-                cells[1].source = bootstrap
-                _write_cells(source_path, cells)
+        # Every notebook shares the same Colab import and installation setup.
+        if cells[1].kind != "code":
+            raise ValueError(f"{name}: cell 01 must be the common setup code.")
+        if cells[1].source != bootstrap:
+            if not write:
+                raise ValueError(f"{name}: cell 01 differs from notebook_sources/shared/bootstrap.py.")
+            cells[1].source = bootstrap
+            _write_cells(source_path, cells)
         notebook = _notebook(source_path, cells)
         if name == "03_ensemble_threshold_submission":
             content = "\n".join(cell.source for cell in cells if cell.kind == "markdown").casefold()

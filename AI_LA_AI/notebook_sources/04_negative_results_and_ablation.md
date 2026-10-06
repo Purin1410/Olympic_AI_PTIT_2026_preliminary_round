@@ -1,414 +1,337 @@
 <!-- ailaai-cell:00:markdown -->
-# Phụ lục 4: Ba thử nghiệm chưa cải thiện kết quả và cách quyết định dừng
+# Bài 4: Chạy thử nghiệm và đọc kết quả ablation
 
-**Thời lượng:** khoảng 15 phút đọc và thảo luận.  
-**Cách chạy:** Tính lại kết quả trên CPU từ dự đoán OOF đã lưu; không cần GPU hay huấn luyện lại.
+Bài này chạy từ ảnh gốc đến bảng so sánh: RGB, biểu diễn Wavelet Haar và RGB có trọng số cho nhóm Fake ít biên. Sau đó ta thử chọn ngưỡng riêng cho ảnh xám/màu.
 
-Ta xem ba hướng đã thử: biểu diễn Wavelet 2D, tăng trọng số cho nhóm ảnh Fake ít biên và chọn ngưỡng riêng cho ảnh xám/màu. Mỗi trường hợp đặt ra một câu hỏi khác nhau khi đọc kết quả: có sửa được nhiều lỗi hơn số lỗi mới, có cải thiện đúng nhóm mục tiêu và có đánh giá ngưỡng trên dữ liệu độc lập không?
+**Trên Colab:** chọn **Runtime → Change runtime type → T4 GPU**, rồi bấm **Run all**. Mặc định mỗi nhánh học 15 epoch trên fold 0. Thời gian phụ thuộc GPU và tốc độ tải dữ liệu; cell huấn luyện in tiến độ sau mỗi epoch.
 
-<!-- ailaai-cell:01:markdown -->
-## 1. Quy ước và cách đọc kết quả
+Các thử nghiệm dưới dùng một công thức giảng dạy mới, cùng ResNet18 và cùng cách chia dữ liệu. Điểm số có thể khác những lần thử trong bài đọc. Ta cần xem kết quả vừa chạy trước khi quyết định có giữ một hướng hay không.
 
-Nhãn Real là 0, Fake là 1. FN (false negative) là ảnh Fake bị đoán thành Real; FP (false positive) là ảnh Real bị đoán thành Fake.
-
-Khi so sánh phương án B với baseline A:
-- **Fixes:** A sai, B đúng.
-- **Breaks:** A đúng, B sai.
-- **Lỗi tăng ròng:** $\text{Breaks} - \text{Fixes}$.
-
-Các bảng dưới được tính từ dự đoán OOF của các thử nghiệm đã lưu. Ta sẽ đọc cả điểm tổng lẫn các nhóm ảnh được sửa hoặc sai thêm.
-
-<!-- ailaai-cell:02:markdown -->
-## 2. Đọc và kiểm tra dữ liệu đã lưu
-
-Gói `data/negative_results/` gồm:
-- `oof_predictions.csv`: 2.000 dòng dự đoán OOF của các nhánh.
-- `threshold_choices.csv`: ngưỡng đã chọn theo fold cho ảnh xám/màu.
-- `promotion_gates.json`: ba tiêu chí chọn phương án và kết quả đánh giá.
-- Ba hình: `wavelet_case.png`, `edge_subgroup_case.png`, `threshold_case.png`.
-
-Bộ ảnh gốc có tại [who_is_AI (Google Drive)](https://drive.google.com/file/d/1g_43_Xn-DWYB-k7Yq4XQTr5ZQXZ0UdXq/view?usp=drive_link).
-
-Trước khi so sánh, cell dưới kiểm tra các dự đoán được ghép theo cùng tên ảnh, nhãn và fold.
-
-<!-- ailaai-cell:03:code -->
+<!-- ailaai-cell:01:code -->
 from pathlib import Path
-import json
-import math
-import statistics
-
-import importlib.util
-import subprocess
-import sys
-missing = [name for name in ("pandas", "IPython") if importlib.util.find_spec(name) is None]
-if missing:
-    subprocess.run([sys.executable, "-m", "pip", "install", "-q", *missing], check=True)
-import pandas as pd
-from IPython.display import display, Image
-
-# Tự lấy gói kết quả khi notebook được mở riêng trên Colab.
+import importlib
 import os
 import subprocess
 import sys
+
+URL = "https://github.com/Purin1410/Olympic_AI_PTIT_2026_preliminary_round.git"
+REF = os.environ.get("AILAAI_RELEASE_REF", "main")
+# Reuse a local checkout when the notebook is opened from this repository.
 TASK = next((p for p in [Path.cwd(), *Path.cwd().parents]
-             if (p / "data/negative_results/oof_predictions.csv").is_file()), None)
+             if (p / "src/ailaai").is_dir() and (p / "pyproject.toml").is_file()), None)
 if TASK is None:
     REPO = Path("/content" if Path("/content").is_dir() else Path.cwd()) / "Olympic_AI_PTIT_2026_preliminary_round"
     if not REPO.exists():
-        subprocess.run(["git", "clone", "--depth", "1", "--branch",
-                        os.environ.get("AILAAI_RELEASE_REF", "main"),
-                        "https://github.com/Purin1410/Olympic_AI_PTIT_2026_preliminary_round.git", str(REPO)], check=True)
+        subprocess.run(["git", "clone", "--depth", "1", "--branch", REF, URL, str(REPO)], check=True)
     TASK = REPO / "AI_LA_AI"
-DATA_DIR = TASK / "data/negative_results"
+else:
+    REPO = TASK.parent
+if not (TASK / "src/ailaai").is_dir():
+    raise FileNotFoundError(f"Không tìm thấy package AI Là AI trong {TASK}.")
+subprocess.run([sys.executable, "-m", "pip", "install", "-q", "-r",
+                str(TASK / "requirements-colab.txt"), "-e", str(TASK)], check=True)
+src_path = str((TASK / "src").resolve())
+if src_path not in sys.path:
+    sys.path.insert(0, src_path)
+importlib.invalidate_caches()
+import ailaai
+if Path(ailaai.__file__).resolve().parent != TASK.resolve() / "src/ailaai":
+    raise RuntimeError("Phiên đang dùng bản ailaai ở thư mục khác. Khởi động lại phiên rồi chạy từ đầu.")
+print("Đã sẵn sàng:", TASK)
 
-OOF_PATH = DATA_DIR / "oof_predictions.csv"
-THRESHOLD_PATH = DATA_DIR / "threshold_choices.csv"
-GATES_PATH = DATA_DIR / "promotion_gates.json"
-FIGURE_PATHS = {
-    "wavelet": DATA_DIR / "wavelet_case.png",
-    "edge": DATA_DIR / "edge_subgroup_case.png",
-    "threshold": DATA_DIR / "threshold_case.png",
-}
-for path in [OOF_PATH, THRESHOLD_PATH, GATES_PATH, *FIGURE_PATHS.values()]:
-    if not path.is_file():
-        raise FileNotFoundError(f"Thiếu đầu vào bắt buộc: {path.name}")
+<!-- ailaai-cell:02:markdown -->
+## 1. Chọn cách chạy
 
-REQUIRED_COLUMNS = [
-    "file_name", "label", "fold", "rgb_prob", "wavelet_prob",
-    "edge_base_prob", "edge_weighted_prob", "legacy_stack_prob",
-    "is_gray", "edge_ratio",
-]
-oof = pd.read_csv(OOF_PATH)
-thresholds = pd.read_csv(THRESHOLD_PATH)
-with GATES_PATH.open(encoding="utf-8") as handle:
-    gate_receipt = json.load(handle)
+Giữ `MODE = "train"` để tải ảnh và huấn luyện thật. Đổi thành `"reference"` nếu chỉ muốn đọc các dự đoán lịch sử trên CPU.
 
-if list(oof.columns) != REQUIRED_COLUMNS:
-    raise ValueError(f"OOF header không đúng contract: {list(oof.columns)}")
-if len(oof) != 2000 or oof["file_name"].isna().any():
-    raise ValueError("OOF cần đúng 2.000 dòng, không thiếu file_name.")
-if oof["file_name"].duplicated().any():
-    raise ValueError("file_name bị trùng; không thể ghép cặp an toàn.")
-if not set(oof["label"].unique()).issubset({0, 1}):
-    raise ValueError("label chỉ được nhận 0=Real hoặc 1=Fake.")
-if not set(oof["fold"].unique()).issubset({0, 1, 2, 3, 4}):
-    raise ValueError("fold phải thuộc {0, 1, 2, 3, 4}.")
-if not set(oof["is_gray"].unique()).issubset({0, 1}):
-    raise ValueError("is_gray chỉ được nhận 0 hoặc 1.")
+`FOLDS = [0]` chạy một fold với 1.600 ảnh train và 400 ảnh validation. Muốn tạo dự đoán OOF cho đủ 2.000 ảnh, đổi thành `[0, 1, 2, 3, 4]`. Khi đó notebook huấn luyện 15 mô hình: ba nhánh cho mỗi fold.
 
-probability_columns = [
-    "rgb_prob", "wavelet_prob", "edge_base_prob",
-    "edge_weighted_prob", "legacy_stack_prob",
-]
-for column in probability_columns + ["edge_ratio"]:
-    oof[column] = pd.to_numeric(oof[column], errors="coerce")
-    if oof[column].isna().any() or not oof[column].map(math.isfinite).all():
-        raise ValueError(f"{column} có giá trị thiếu hoặc không hữu hạn.")
-for column in probability_columns:
-    if not oof[column].between(0, 1).all():
-        raise ValueError(f"{column} phải nằm trong [0, 1].")
+Checkpoint được lưu sau từng epoch. Chạy lại trong cùng runtime sẽ tiếp tục phần còn thiếu hoặc dùng lại lượt đã hoàn tất. Nếu xóa runtime Colab, cần lưu thư mục `artifacts/` ra ngoài trước.
 
-if list(thresholds.columns) != ["fold", "gray_threshold", "color_threshold"]:
-    raise ValueError("Header threshold_choices.csv không đúng contract.")
-if len(thresholds) != 5 or set(thresholds["fold"]) != {0, 1, 2, 3, 4}:
-    raise ValueError("Cần đúng một threshold đã chọn cho mỗi fold 0-4.")
-if thresholds["fold"].duplicated().any():
-    raise ValueError("threshold_choices.csv có fold trùng.")
-for column in ["gray_threshold", "color_threshold"]:
-    thresholds[column] = pd.to_numeric(thresholds[column], errors="coerce")
-    if thresholds[column].isna().any() or not thresholds[column].between(0, 1).all():
-        raise ValueError(f"{column} thiếu hoặc ngoài [0, 1].")
+<!-- ailaai-cell:03:code -->
+import json
+import numpy as np
+import pandas as pd
+import matplotlib.pyplot as plt
+import torch
+from IPython.display import display
+from ailaai.config import Workspace, load_config, config_with
+from ailaai.data import load_train_manifest, load_fold_split, decode_rgb
+from ailaai.resources import prepare_resources
+from ailaai.engine import fit_fold
+from ailaai.models import model_factory as build_model
+from ailaai.transforms import native_view
+from ailaai.ablation import (haar_view, image_features, low_edge_weights,
+                            paired_report, calibration_split, choose_group_thresholds)
+from ailaai.metrics import classification_report, macro_f1
 
-print(f"Bundle: {DATA_DIR}")
-print(f"OOF rows: {len(oof)} | folds: {sorted(oof.fold.unique())}")
-print("Xác nhận dữ liệu: CSV, ngưỡng, receipt và ba PNG đều hợp lệ 100%.")
+MODE = "train"
+FOLDS = [0]
+EPOCHS = 15
+RUN_ID = "lesson_nb4_e2e_v1"
+if MODE not in {"train", "reference"}:
+    raise ValueError('MODE chỉ nhận "train" hoặc "reference".')
+if not FOLDS or len(set(FOLDS)) != len(FOLDS) or not set(FOLDS) <= set(range(5)):
+    raise ValueError("FOLDS cần các fold khác nhau trong 0..4.")
+if MODE == "train" and not torch.cuda.is_available():
+    raise RuntimeError('Chọn T4 GPU rồi chạy lại, hoặc đổi MODE thành "reference" để đọc kết quả trên CPU.')
+ws = Workspace.from_root(TASK, run_id=RUN_ID)
+cfg = config_with(load_config(TASK / "configs/rgb_native358.json"), epochs=EPOCHS,
+                  model={"backbone": "resnet18", "weights": "IMAGENET1K_V1"})
+MODEL_SPEC = dict(cfg.model)
+print("Chế độ:", MODE, "| folds:", FOLDS, "| epoch mỗi nhánh:", EPOCHS)
+print("Kết quả:", ws.output_root)
 
 <!-- ailaai-cell:04:markdown -->
-## 3. Thử nghiệm 1: Biểu diễn Wavelet
+## 2. Tải dữ liệu và kiểm tra cách chia
 
-Nhánh này phân rã ảnh bằng Wavelet 2D thành bốn dải LL, LH, HL và HH để thử biểu diễn thông tin tần số cho mô hình.
+Bộ ảnh có tại [who_is_AI (Google Drive)](https://drive.google.com/file/d/1g_43_Xn-DWYB-k7Yq4XQTr5ZQXZ0UdXq/view?usp=drive_link). Cell dưới tự tải, giải nén và tìm thư mục ảnh. Bảng chia fold cố định giúp các nhánh được so sánh trên cùng ảnh.
 
-Nhánh Wavelet sửa được bao nhiêu ảnh RGB đoán sai, và làm sai thêm bao nhiêu ảnh? Khi so Wavelet ResNet18 với RGB ResNet34, ta đã thay đổi những yếu tố nào?
+Ở chế độ `reference`, notebook dùng CSV đã đóng gói trong repo và không tải ảnh gốc.
 
 <!-- ailaai-cell:05:code -->
-def predictions(probabilities, threshold=0.5):
-    return (pd.Series(probabilities).astype(float) >= threshold).astype(int)
+if MODE == "train":
+    prepare_resources(ws, TASK / "configs/resources.json", profile="train")
+    train = load_train_manifest(ws)
+    print("Ảnh train:", len(train))
+    display(train.label.value_counts().sort_index().rename(index={0: "Real", 1: "Fake"}))
+    for fold in FOLDS:
+        fit_rows, val_rows = load_fold_split(train, TASK / "assets/splits/train_folds.csv", fold)
+        print(f"Fold {fold}: train {len(fit_rows)}, validation {len(val_rows)}")
+else:
+    reference_dir = TASK / "data/negative_results"
+    results = pd.read_csv(reference_dir / "oof_predictions.csv")
+    results = results[results.fold.isin(FOLDS)].copy()
+    cutoffs = {int(item["fold"]): float(item["cutoff"])
+               for item in json.loads((reference_dir / "promotion_gates.json").read_text())["cutoffs"]}
+    print("Đang đọc dự đoán lịch sử:", len(results), "ảnh")
 
+<!-- ailaai-cell:06:markdown -->
+## 3. RGB và Wavelet nhìn ảnh như thế nào?
 
-def confusion_counts(y_true, y_pred):
-    pairs = list(zip(map(int, y_true), map(int, y_pred)))
-    return {
-        "TN": sum(y == 0 and p == 0 for y, p in pairs),
-        "FP": sum(y == 0 and p == 1 for y, p in pairs),
-        "FN": sum(y == 1 and p == 0 for y, p in pairs),
-        "TP": sum(y == 1 and p == 1 for y, p in pairs),
-    }
+Ta cắt vùng giữa ảnh thành 358 × 358, tương ứng khoảng 70% chiều dài mỗi cạnh của ảnh 512 × 512.
 
+Nhánh RGB giữ vùng cắt này. Nhánh Haar phân rã thành bốn dải LL, LH, HL, HH rồi xếp chúng vào bốn góc của từng kênh màu. Các dải chi tiết có thể âm nên được đưa về quanh 0,5; đầu ra vẫn có ba kênh và kích thước 358 × 358.
 
-def transition_counts(y_true, pred_a, pred_b):
-    y = list(map(int, y_true))
-    a = list(map(int, pred_a))
-    b = list(map(int, pred_b))
-    correct_a = [pa == yi for yi, pa in zip(y, a)]
-    correct_b = [pb == yi for yi, pb in zip(y, b)]
-    fixes = sum((not ca) and cb for ca, cb in zip(correct_a, correct_b))
-    breaks = sum(ca and (not cb) for ca, cb in zip(correct_a, correct_b))
-    return {"fixes": fixes, "breaks": breaks, "net errors (B − A)": breaks - fixes}
+Cả hai nhánh dùng ResNet18, trọng số ImageNet, cùng seed và lịch học. Như vậy ta không đổi backbone khi thử biểu diễn ảnh. Cách xếp bốn dải ở đây được viết rõ trong `haar_view`; đây là lựa chọn cho bài thực hành, chưa phải công thức tốt nhất.
 
+<!-- ailaai-cell:07:code -->
+def student_model_factory(*, initialize):
+    return build_model(MODEL_SPEC["backbone"], MODEL_SPEC["weights"], initialize=initialize)
 
-def macro_f1(y_true, y_pred):
-    cm = confusion_counts(y_true, y_pred)
-    f1_real = 2 * cm["TN"] / max(1, 2 * cm["TN"] + cm["FP"] + cm["FN"])
-    f1_fake = 2 * cm["TP"] / max(1, 2 * cm["TP"] + cm["FP"] + cm["FN"])
-    return (f1_real + f1_fake) / 2
+def rgb_view(batch):
+    return native_view(batch, crop=358)
 
+def wavelet_view(batch):
+    return haar_view(batch, crop=358)
 
-def paired_report(frame, a_column, b_column, threshold=0.5):
-    y = frame["label"].astype(int)
-    a = predictions(frame[a_column], threshold)
-    b = predictions(frame[b_column], threshold)
-    a_correct = a.to_numpy() == y.to_numpy()
-    b_correct = b.to_numpy() == y.to_numpy()
-    fixes = int((~a_correct & b_correct).sum())
-    breaks = int((a_correct & ~b_correct).sum())
-    return {
-        "Nhánh A": a_column,
-        "Nhánh B": b_column,
-        "n": len(frame),
-        "A Macro-F1 (%)": 100 * macro_f1(y, a),
-        "B Macro-F1 (%)": 100 * macro_f1(y, b),
-        "A errors": int((~a_correct).sum()),
-        "B errors": int((~b_correct).sum()),
-        "fixes": fixes,
-        "breaks": breaks,
-        "net errors (B − A)": breaks - fixes,
-        "A confusion": confusion_counts(y, a),
-        "B confusion": confusion_counts(y, b),
-    }
-
-
-wavelet_result = paired_report(oof, "rgb_prob", "wavelet_prob")
-display(pd.DataFrame([wavelet_result]).T.rename(columns={0: "Kết quả"}))
-assert wavelet_result["fixes"] == 30, "Fixes không khớp receipt lịch sử."
-assert wavelet_result["breaks"] == 183, "Breaks không khớp receipt lịch sử."
-assert wavelet_result["net errors (B − A)"] == 153
-
-<!-- ailaai-cell:06:code -->
-display(Image(filename=str(FIGURE_PATHS["wavelet"])))
-
-<!-- ailaai-cell:07:markdown -->
-### Kết quả Wavelet và giới hạn của phép so sánh
-
-Wavelet sửa 30 ảnh RGB đoán sai nhưng làm sai thêm 183 ảnh. Tổng lỗi tăng 153; Macro-F1 giảm từ 95,40% xuống 87,75%.
-
-ResNet18 được dùng để thăm dò trước khi đầu tư huấn luyện Wavelet với ResNet34. Nhánh High-pass đã có kết quả ResNet18 94,50% và ResNet34 95,15%, chênh 0,65 điểm phần trăm. Các số này cung cấp bối cảnh cho quyết định dừng nhánh Wavelet, nhưng không dự đoán được mức cải thiện của Wavelet khi đổi backbone.
-
-Phép so sánh Wavelet-R18 với RGB-R34 đổi cả biểu diễn, backbone và batch (16 sang 32). Vì vậy, kết quả cho thấy cấu hình Wavelet đã thử chưa đạt yêu cầu; chưa tách được ảnh hưởng riêng của biểu diễn Wavelet. Muốn kiểm tra riêng yếu tố này, cần giữ các điều kiện còn lại giống nhau.
-
-Khi đọc bảng, hãy xem cả số ca được sửa và số ca sai thêm.
+RGB_SPEC = {"name": "native", "crop": 358}
+WAVELET_SPEC = {"name": "haar_quadrants", "crop": 358, "version": 1}
+if MODE == "train":
+    sample = decode_rgb(train.iloc[0].path)
+    fig, axes = plt.subplots(1, 2, figsize=(9, 4))
+    for ax, title, view in zip(axes, ["RGB", "Haar: LL / LH / HL / HH"],
+                               [rgb_view(sample), wavelet_view(sample)]):
+        ax.imshow(view.permute(1, 2, 0).numpy())
+        ax.set_title(title)
+        ax.axis("off")
+    fig.tight_layout()
+    fig.savefig(ws.output_root / "input_views.png", dpi=150)
+    plt.show()
 
 <!-- ailaai-cell:08:markdown -->
-## 4. Thử nghiệm 2: Tăng trọng số cho ảnh Fake ít biên
+## 4. Chọn nhóm Fake ít biên từ tập train
 
-Phân tích lỗi gợi ý thử tập trung vào ảnh Fake có tỷ lệ biên thấp. Phương án này tăng trọng số loss lên $1{,}5\times$ cho nhóm $25\%$ ảnh Fake ít biên nhất trong tập train.
+Ở bài thực hành này, `edge_ratio` là tỷ lệ pixel có độ lớn gradient Sobel vượt 0,08 trên vùng cắt. Ảnh xám được nhận diện qua mức chênh lệch giữa ba kênh màu. Ta tính cả hai từ ảnh đang dùng, không ghép đặc trưng lịch sử vào lượt chạy mới.
 
-Nếu Macro-F1 trên 2.000 ảnh tăng, số ca bỏ sót ở nhóm muốn cải thiện có giảm theo không?
+Mỗi fold chọn ngưỡng phân vị 25% từ **ảnh Fake của phần train**. Ảnh Fake thấp hơn ngưỡng nhận trọng số 1,5; các ảnh Fake còn lại được giảm trọng số để tổng trọng số lớp Fake giữ nguyên. Ảnh Real vẫn có trọng số 1. Nếu nhiều ảnh có cùng giá trị tại ngưỡng, nhóm được tăng trọng số có thể ít hơn 25%.
+
+Đây là trọng số cho loss của từng ảnh, không phải loss theo pixel. Ngưỡng được chọn trước khi xem kết quả validation.
 
 <!-- ailaai-cell:09:code -->
-edge_global = paired_report(oof, "edge_base_prob", "edge_weighted_prob")
-display(pd.DataFrame([
-    {
-        "Recipe": "Baseline",
-        "n": edge_global["n"],
-        "Macro-F1 (%)": edge_global["A Macro-F1 (%)"],
-        "FP": edge_global["A confusion"]["FP"],
-        "FN": edge_global["A confusion"]["FN"],
-    },
-    {
-        "Recipe": "Edge subgroup weighting",
-        "n": edge_global["n"],
-        "Macro-F1 (%)": edge_global["B Macro-F1 (%)"],
-        "FP": edge_global["B confusion"]["FP"],
-        "FN": edge_global["B confusion"]["FN"],
-    },
-]).round(4))
-assert edge_global["n"] == 2000
+if MODE == "train":
+    features = image_features(train, crop=358, edge_threshold=0.08)
+    train = train.merge(features, on="file_name", validate="one_to_one")
+    display(features.head())
+    print("Ảnh xám:", int(features.is_gray.sum()))
+    features.to_csv(ws.output_root / "image_features.csv", index=False)
 
-<!-- ailaai-cell:10:code -->
-cutoff_records = gate_receipt.get("cutoffs")
-if not isinstance(cutoff_records, list):
-    raise ValueError("promotion_gates.json cần danh sách cutoffs theo fold.")
-cutoffs = {int(row["fold"]): float(row["cutoff"]) for row in cutoff_records}
-if set(cutoffs) != {0, 1, 2, 3, 4}:
-    raise ValueError("Cần cutoff edge-ratio cho đủ năm fold.")
+<!-- ailaai-cell:10:markdown -->
+## 5. Huấn luyện ba nhánh
 
-edge_rows = oof.copy()
-edge_rows["low_edge_group"] = edge_rows.apply(
-    lambda row: float(row["edge_ratio"]) <= cutoffs[int(row["fold"])], axis=1
-)
-target_fake = edge_rows[(edge_rows.label == 1) & edge_rows.low_edge_group]
-target_real = edge_rows[(edge_rows.label == 0) & edge_rows.low_edge_group]
-fake_base = predictions(target_fake.edge_base_prob)
-fake_weighted = predictions(target_fake.edge_weighted_prob)
-real_base = predictions(target_real.edge_base_prob)
-real_weighted = predictions(target_real.edge_weighted_prob)
+Ta chạy RGB, Haar và RGB có trọng số lần lượt để không giữ nhiều mô hình trên GPU cùng lúc. Validation chỉ dùng để theo dõi; mỗi nhánh lấy checkpoint ở epoch cuối đã định trước, không chọn epoch theo điểm cao nhất.
 
-display(pd.DataFrame([
-    {
-        "Nhóm": "Fake edge-ratio thấp",
-        "n": len(target_fake),
-        "FN baseline": int((fake_base == 0).sum()),
-        "FN weighted": int((fake_weighted == 0).sum()),
-    },
-    {
-        "Nhóm": "Real edge-ratio thấp",
-        "n": len(target_real),
-        "FP baseline": int((real_base == 1).sum()),
-        "FP weighted": int((real_weighted == 1).sum()),
-    },
-]))
-assert len(target_fake) == 248 and len(target_real) == 397
-assert int((fake_base == 0).sum()) == 17
-assert int((fake_weighted == 0).sum()) == 18
-assert int((real_base == 1).sum()) == 10
-assert int((real_weighted == 1).sum()) == 11
-
-recorded_gates = gate_receipt.get("gates", gate_receipt)
-gate_names = ["G1_mechanism", "G2_collateral", "G3_stack"]
-if not all(name in recorded_gates for name in gate_names):
-    raise ValueError("Receipt thiếu một trong ba cờ G1/G2/G3.")
-stack_info = gate_receipt.get("stack_attribution", {})
-recorded_stack_gain = stack_info.get("total_net_error_reduction")
-
-observed_checks = [
-    int((fake_weighted == 0).sum()) < int((fake_base == 0).sum()),
-    int((real_weighted == 1).sum()) <= int((real_base == 1).sum()),
-    recorded_stack_gain is not None and float(recorded_stack_gain) > 0,
-]
-gate_table = pd.DataFrame([
-    {"Gate": name, "Đạt theo receipt": bool(recorded_gates[name]),
-     "Quan sát đơn giản": bool(observed)}
-    for name, observed in zip(gate_names, observed_checks)
-])
-display(gate_table)
-if any(bool(recorded_gates[name]) for name in gate_names):
-    raise ValueError("Receipt không khớp trạng thái đã ghi cho case này.")
+Learning rate cho backbone là 1,5 × 10⁻⁴, cho head là 7,5 × 10⁻⁴; weight decay là 10⁻⁴. Các thiết lập còn lại nằm trong cấu hình dùng chung. Nếu thay số epoch hoặc công thức, bộ huấn luyện tạo thư mục riêng để tránh nạp nhầm checkpoint.
 
 <!-- ailaai-cell:11:code -->
-display(Image(filename=str(FIGURE_PATHS["edge"])))
+runs = {}
+if MODE == "train":
+    frames, cutoffs = [], {}
+    for fold in FOLDS:
+        fit_rows, val_rows = load_fold_split(train, TASK / "assets/splits/train_folds.csv", fold)
+        weights, cutoff = low_edge_weights(fit_rows, multiplier=1.5)
+        cutoffs[fold] = cutoff
+        fold_ws = Workspace.from_root(TASK, run_id=f"{RUN_ID}_fold{fold}")
+        pd.DataFrame({"file_name": list(weights), "weight": list(weights.values())}).to_csv(
+            fold_ws.output_root / "train_sample_weights.csv", index=False)
+        frame = val_rows[["file_name", "label", "fold", "is_gray", "edge_ratio"]].copy()
+        for branch, view_fn, view_spec, sample_weights, column in [
+            ("rgb", rgb_view, RGB_SPEC, None, "rgb_prob"),
+            ("wavelet", wavelet_view, WAVELET_SPEC, None, "wavelet_prob"),
+            ("edge_weighted", rgb_view, RGB_SPEC, weights, "edge_weighted_prob"),
+        ]:
+            branch_cfg = config_with(cfg, view=view_spec)
+            run = fit_fold(fold_ws, branch_cfg, branch, fit_rows, val_rows,
+                           student_model_factory, view_fn, view_spec, MODEL_SPEC,
+                           sample_weights=sample_weights)
+            runs[(fold, branch)] = run
+            probability = run.val_predictions.rows[["file_name", "prob"]].rename(columns={"prob": column})
+            frame = frame.merge(probability, on="file_name", validate="one_to_one")
+            print(run.summary())
+        # Cùng RGB baseline cho so sánh trọng số; không thêm một mô hình thứ tư.
+        frame["edge_base_prob"] = frame["rgb_prob"]
+        frames.append(frame)
+    results = pd.concat(frames, ignore_index=True)
+    print("Đã huấn luyện xong:", len(runs), "mô hình")
+else:
+    print("Chế độ reference: bỏ qua huấn luyện.")
+
+if not results.file_name.is_unique or results.empty:
+    raise ValueError("Các dự đoán cần có tên ảnh duy nhất và không được rỗng.")
+for col in ["rgb_prob", "wavelet_prob", "edge_base_prob", "edge_weighted_prob"]:
+    if not np.isfinite(results[col]).all() or not results[col].between(0, 1).all():
+        raise ValueError(f"Xác suất không hợp lệ: {col}")
+print("Dự đoán validation:", len(results), "| folds:", sorted(results.fold.unique()))
 
 <!-- ailaai-cell:12:markdown -->
-### Điểm tổng và kết quả ở nhóm mục tiêu
+## 6. Đọc điểm tổng và số lỗi
 
-Macro-F1 tăng từ 95,40% lên 95,55%; FN trên toàn bộ dữ liệu giảm từ 64 xuống 61.
+Real là 0, Fake là 1. FN là ảnh Fake bị đoán thành Real; FP là ảnh Real bị đoán thành Fake. Ta dùng ngưỡng 0,5 cho bảng so sánh đầu tiên.
 
-Ngưỡng phân vị 25% được tính trên ảnh Fake của 4 fold train, rồi áp dụng cho cả hai lớp ở fold OOF còn lại. Gộp các fold có 248 ảnh Fake và 397 ảnh Real trong nhóm ít biên. Nhóm này không được tạo bằng cách lấy trực tiếp 25% của 1.000 ảnh Fake OOF.
+Một fold chỉ cho kết quả trên 400 ảnh validation. Nếu chạy đủ năm fold, bảng tổng hợp có 2.000 dự đoán OOF: mỗi ảnh được dự đoán bởi mô hình không học ảnh đó.
 
-Ở 248 ảnh Fake mục tiêu, FN tăng từ 17 lên 18. Với 397 ảnh Real cùng dải biên thấp, FP tăng từ 10 lên 11. Điểm tổng tăng nhưng hai nhóm đang quan tâm đều có thêm lỗi.
+<!-- ailaai-cell:13:code -->
+metric_rows = []
+for branch, column in [("RGB", "rgb_prob"), ("Haar", "wavelet_prob"),
+                       ("RGB có trọng số", "edge_weighted_prob")]:
+    report = classification_report(results.label, results[column])
+    tn, fp, fn, tp = np.asarray(report["confusion_matrix"]).ravel()
+    metric_rows.append({"Nhánh": branch, "n": len(results), "Macro-F1": report["macro_f1"],
+                        "TN": int(tn), "FP": int(fp), "FN": int(fn), "TP": int(tp)})
+metrics = pd.DataFrame(metric_rows)
+display(metrics)
+if MODE == "reference":
+    print("RGB/Wavelet lịch sử thay cả backbone; không suy ra riêng ảnh hưởng của biểu diễn.")
 
-Ba tiêu chí đã đặt ra cho phương án này:
-- **G1:** Giảm FN ở nhóm Fake mục tiêu. Chưa đạt: 17 lên 18.
-- **G2:** Không tăng FP ở nhóm Real tương ứng. Chưa đạt: 10 lên 11.
-- **G3:** Giảm tổng lỗi khi thay nhánh vào mô hình kết hợp. Chưa đạt: mức giảm lỗi ròng bằng 0.
+<!-- ailaai-cell:14:markdown -->
+## 7. Wavelet: sửa lỗi hay tạo thêm lỗi?
 
-Phương án chưa đạt ba tiêu chí, nên chưa được chọn thay baseline. Khi thử cải thiện một nhóm ảnh cụ thể, cần xem kết quả của nhóm đó cùng với điểm tổng.
+**Fixes** là những ảnh RGB đoán sai nhưng Haar đoán đúng. **Breaks** là những ảnh RGB đoán đúng nhưng Haar lại sai. Hiệu `breaks − fixes` cho biết số lỗi tăng ròng.
 
-<!-- ailaai-cell:13:markdown -->
-## 5. Thử nghiệm 3: Chọn ngưỡng riêng cho ảnh xám và ảnh màu
-
-Phép thử dùng cột `legacy_stack_prob` của Stacking Legal7 đã lưu. Với ngưỡng cố định $t = 0.50$, mô hình đạt Macro-F1 96,70% và có 66 lỗi. Đây là kết quả của Legal7, không phải Simple Mean hay Clean Stack6.
-
-Ta thử chọn hai ngưỡng: $t_{\text{gray}}$ cho ảnh xám và $t_{\text{color}}$ cho ảnh màu.
-
-Cặp ngưỡng xám 0.485 và màu 0.510 cho điểm 96,75% khi chấm lại trên OOF. Dữ liệu dùng để chọn ngưỡng và dữ liệu dùng để báo điểm có tách biệt không?
-
-<!-- ailaai-cell:14:code -->
-thresholds = thresholds.sort_values("fold").reset_index(drop=True)
-threshold_map = thresholds.set_index("fold")
-gray_median = statistics.median(thresholds.gray_threshold.tolist())
-color_median = statistics.median(thresholds.color_threshold.tolist())
-
-y = oof.label.astype(int)
-score = oof.legacy_stack_prob.astype(float)
-fold = oof.fold.astype(int)
-gray = oof.is_gray.astype(int) == 1
-
-fixed_pred = (score >= 0.5).astype(int)
-crossfit_threshold = pd.Series([
-    float(threshold_map.loc[int(f), "gray_threshold" if is_gray else "color_threshold"])
-    for f, is_gray in zip(fold, gray)
-], index=oof.index)
-crossfit_pred = (score >= crossfit_threshold).astype(int)
-median_threshold = pd.Series([
-    gray_median if is_gray else color_median for is_gray in gray
-], index=oof.index)
-median_pred = (score >= median_threshold).astype(int)
-
-crossfit_transitions = transition_counts(y, fixed_pred, crossfit_pred)
-median_transitions = transition_counts(y, fixed_pred, median_pred)
-
-threshold_results = pd.DataFrame([
-    {
-        "Cách chấm": "Ngưỡng cố định 0,500",
-        "Macro-F1 (%)": 100 * macro_f1(y, fixed_pred),
-        **confusion_counts(y, fixed_pred),
-        "fixes so với fixed": 0,
-        "breaks so với fixed": 0,
-        "net errors so với fixed": 0,
-        "Diễn giải": "Mốc cố định",
-    },
-    {
-        "Cách chấm": "Threshold cross-fit",
-        "Macro-F1 (%)": 100 * macro_f1(y, crossfit_pred),
-        **confusion_counts(y, crossfit_pred),
-        "fixes so với fixed": crossfit_transitions["fixes"],
-        "breaks so với fixed": crossfit_transitions["breaks"],
-        "net errors so với fixed": crossfit_transitions["net errors (B − A)"],
-        "Diễn giải": "Mỗi fold dùng ngưỡng chọn từ bốn fold còn lại",
-    },
-    {
-        "Cách chấm": "Median threshold áp lại toàn OOF",
-        "Macro-F1 (%)": 100 * macro_f1(y, median_pred),
-        **confusion_counts(y, median_pred),
-        "fixes so với fixed": median_transitions["fixes"],
-        "breaks so với fixed": median_transitions["breaks"],
-        "net errors so với fixed": median_transitions["net errors (B − A)"],
-        "Diễn giải": "Tái sử dụng OOF labels để chọn và chấm",
-    },
-])
-display(threshold_results.round(4))
-print(f"Median gray threshold: {gray_median:.3f}")
-print(f"Median color threshold: {color_median:.3f}")
-
-assert abs(gray_median - 0.485) < 1e-9
-assert abs(color_median - 0.510) < 1e-9
-assert abs(100 * macro_f1(y, fixed_pred) - 96.6998) < 0.01
-assert abs(100 * macro_f1(y, crossfit_pred) - 96.3996) < 0.01
-assert abs(100 * macro_f1(y, median_pred) - 96.7498) < 0.01
+Đọc bảng vừa tính trước khi kết luận. Nếu thử nghiệm này tốt hơn RGB, ta ghi nhận kết quả đó; không ép lượt chạy mới phải giống một thử nghiệm thất bại trong bài đọc.
 
 <!-- ailaai-cell:15:code -->
-display(Image(filename=str(FIGURE_PATHS["threshold"])))
+wavelet_report = paired_report(results, "rgb_prob", "wavelet_prob")
+display(pd.DataFrame([wavelet_report]))
+fig, axes = plt.subplots(1, 2, figsize=(10, 3.5))
+axes[0].bar(metrics["Nhánh"], metrics["Macro-F1"])
+axes[0].set_ylim(0, 1)
+axes[0].set_ylabel("Macro-F1")
+axes[0].tick_params(axis="x", rotation=15)
+axes[1].bar(["Fixes", "Breaks"], [wavelet_report["fixes"], wavelet_report["breaks"]])
+axes[1].set_ylabel("Số ảnh")
+fig.tight_layout()
+fig.savefig(ws.output_root / f"{MODE}_wavelet_comparison.png", dpi=150)
+plt.show()
 
 <!-- ailaai-cell:16:markdown -->
-### So sánh cách chọn và đánh giá ngưỡng
+## 8. Trọng số mẫu: nhóm mục tiêu có tốt hơn không?
 
-| Cách đánh giá | Macro-F1 | Kết quả |
-| --- | --- | --- |
-| Giữ $t = 0.50$ | 96,70% | 66 lỗi, mốc tham chiếu của Legal7. |
-| Áp ngưỡng trung vị lên lại OOF | 96,75% | Dữ liệu đã góp phần chọn ngưỡng được dùng lại để báo điểm. |
-| Đánh giá chéo (cross-fit) | 96,40% | Chọn ngưỡng trên 4 fold, đánh giá ở fold còn lại; thêm 6 lỗi so với mốc 0.50. |
+Điểm tổng có thể tăng trong khi nhóm Fake ít biên vẫn sai thêm. Ta dùng ngưỡng đã chọn từ train của từng fold để xem riêng nhóm này và nhóm Real ít biên.
 
-Điểm chấm lại trên dữ liệu chọn ngưỡng có thể lạc quan (optimism bias). Trong phép thử Legal7 này, chính sách tách ngưỡng không tốt hơn ngưỡng cố định khi đánh giá chéo.
+Nếu nhóm mục tiêu quá nhỏ hoặc không có ảnh, bảng ghi số ảnh để ta biết giới hạn của phép so sánh. Cải thiện vài ảnh trên một fold chưa đủ để kết luận hướng này ổn định.
 
-Ta giữ $t = 0.50$ cho phương án này. Kết quả không có nghĩa ngưỡng 0.50 luôn tốt nhất; thay đổi ngưỡng cần được đánh giá trên dữ liệu không tham gia chọn ngưỡng.
+<!-- ailaai-cell:17:code -->
+edge_report = paired_report(results, "edge_base_prob", "edge_weighted_prob")
+display(pd.DataFrame([edge_report]))
+subgroup_rows = []
+for fold, frame in results.groupby("fold"):
+    for label, name in [(1, "Fake ít biên"), (0, "Real ít biên")]:
+        group = frame[(frame.label == label) & (frame.edge_ratio < cutoffs[int(fold)])]
+        baseline_errors = int(((group.edge_base_prob >= 0.5).astype(int) != group.label).sum())
+        weighted_errors = int(((group.edge_weighted_prob >= 0.5).astype(int) != group.label).sum())
+        subgroup_rows.append({"fold": int(fold), "Nhóm": name, "n": len(group),
+                              "RGB errors": baseline_errors, "Weighted errors": weighted_errors,
+                              "cutoff từ train": cutoffs[int(fold)]})
+subgroups = pd.DataFrame(subgroup_rows)
+display(subgroups)
+fig, ax = plt.subplots(figsize=(8, 3.5))
+subgroups.groupby("Nhóm")[["RGB errors", "Weighted errors"]].sum().plot.bar(ax=ax, rot=0)
+ax.set_ylabel("Số ảnh sai")
+fig.tight_layout()
+fig.savefig(ws.output_root / f"{MODE}_edge_subgroups.png", dpi=150)
+plt.show()
 
-<!-- ailaai-cell:17:markdown -->
-## 6. Những câu hỏi trước khi chọn phương án mới
+<!-- ailaai-cell:18:markdown -->
+## 9. Chọn ngưỡng trên calibration, chấm trên evaluation
 
-1. Hai phương án có được đánh giá trên cùng ảnh, nhãn và fold không?
-2. Ta thay đổi một yếu tố hay nhiều yếu tố cùng lúc?
-3. Nhóm ảnh muốn cải thiện có tốt hơn không?
-4. Có bao nhiêu ca được sửa và bao nhiêu ca sai thêm?
-5. Dữ liệu đánh giá có tham gia chọn ngưỡng hoặc siêu tham số không?
+Trong mỗi fold validation, ta tách khoảng một nửa làm calibration, phần còn lại làm evaluation; cách chia giữ các nhóm nhãn và xám/màu. Mô hình không học cả hai phần này.
 
-Nếu phương án chưa đạt tiêu chí, ghi lại kết quả và lý do chưa chọn. Ta có thể giữ baseline để tiếp tục thử hướng khác.
+Ta thử ngưỡng 0,30 đến 0,70 trên calibration. Nhóm thiếu một trong hai lớp giữ ngưỡng 0,5. Sau khi chọn xong, ta so ngưỡng mới với 0,5 **trên cùng phần evaluation**. Không dò lại ngưỡng bằng nhãn evaluation.
+
+Bài thực hành dùng xác suất RGB cho bước này. Phần ngưỡng trong bài đọc dùng một mô hình ghép khác, nên không lấy điểm ở đây làm điểm tái tạo của mô hình đó.
+
+<!-- ailaai-cell:19:code -->
+threshold_rows, evaluation_frames = [], []
+for fold, frame in results.groupby("fold"):
+    calibration, evaluation = calibration_split(frame, seed=cfg.seed + int(fold))
+    chosen = choose_group_thresholds(calibration, probability="rgb_prob")
+    evaluation["chosen_threshold"] = evaluation.is_gray.map(chosen)
+    evaluation["prediction_default"] = (evaluation.rgb_prob >= 0.5).astype(int)
+    evaluation["prediction_calibrated"] = (evaluation.rgb_prob >= evaluation.chosen_threshold).astype(int)
+    evaluation_frames.append(evaluation)
+    threshold_rows.append({"fold": int(fold), "calibration_n": len(calibration),
+                           "evaluation_n": len(evaluation), "gray_threshold": chosen[1],
+                           "color_threshold": chosen[0]})
+thresholds = pd.DataFrame(threshold_rows)
+evaluation = pd.concat(evaluation_frames, ignore_index=True)
+display(thresholds)
+threshold_report = pd.DataFrame([
+    {"Ngưỡng": "0.5", "n": len(evaluation),
+     "Macro-F1": macro_f1(evaluation.label, evaluation.prediction_default)},
+    {"Ngưỡng": "Chọn trên calibration", "n": len(evaluation),
+     "Macro-F1": macro_f1(evaluation.label, evaluation.prediction_calibrated)},
+])
+display(threshold_report)
+fig, ax = plt.subplots(figsize=(7, 3.5))
+ax.bar(threshold_report["Ngưỡng"], threshold_report["Macro-F1"])
+ax.set_ylim(0, 1)
+ax.set_ylabel("Macro-F1 trên evaluation")
+fig.tight_layout()
+fig.savefig(ws.output_root / f"{MODE}_threshold_evaluation.png", dpi=150)
+plt.show()
+
+<!-- ailaai-cell:20:markdown -->
+## 10. Lưu kết quả và quyết định bước tiếp theo
+
+Cell cuối lưu dự đoán, bảng điểm, ngưỡng và danh sách checkpoint của lượt chạy. Các hình phía trên cũng được lưu dưới dạng PNG. Đây là báo cáo ablation trên ảnh có nhãn, không phải điểm Private Test.
+
+Khi đọc kết quả, hãy nêu rõ số fold, số ảnh và số epoch. Với Wavelet, xem fixes/breaks; với trọng số, xem nhóm mục tiêu; với ngưỡng, xem phần evaluation. Nếu muốn thử tiếp, đổi một yếu tố rồi chạy lại cùng cách chia dữ liệu.
+
+<!-- ailaai-cell:21:code -->
+output = ws.output_root / MODE
+output.mkdir(parents=True, exist_ok=True)
+for name, table in [("validation_predictions", results), ("metrics", metrics),
+                    ("edge_subgroups", subgroups), ("threshold_choices", thresholds),
+                    ("threshold_evaluation", evaluation), ("threshold_metrics", threshold_report)]:
+    table.to_csv(output / f"{name}.csv", index=False)
+receipt = {"mode": MODE, "folds": FOLDS, "epochs": EPOCHS if MODE == "train" else None,
+           "config": cfg.to_dict() if MODE == "train" else None,
+           "validation_rows": len(results), "threshold_evaluation_rows": len(evaluation),
+           "wavelet": wavelet_report, "edge_weighting": edge_report,
+           "cutoffs_from_training": cutoffs,
+           "checkpoints": [str(run.checkpoint_path) for run in runs.values()]}
+(output / "run_summary.json").write_text(json.dumps(receipt, ensure_ascii=False, indent=2), encoding="utf-8")
+print("Đã lưu báo cáo:", output)
+print("Đã lưu hình:", ws.output_root)
+print("Chạy xong bài 4.")
