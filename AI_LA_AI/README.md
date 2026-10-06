@@ -1,66 +1,61 @@
 # AI LÀ AI
 
-Tài liệu và code thực hành cho bài toán phân loại ảnh chân dung thật và ảnh do AI tạo ra. Trong notebook, học viên có thể đọc công thức, theo dõi từng bước xử lý và sửa các phần được dùng trong bài học. Thư mục `src/ailaai/` chứa code dùng chung cho việc đọc dữ liệu, huấn luyện, đánh giá và xuất tệp nộp bài.
+Bộ thực hành này dùng ảnh chân dung để phân loại người thật (**Real, nhãn 0**) và ảnh do AI tạo ra (**Fake, nhãn 1**). Năm notebook đi từ khám phá dữ liệu, xây dựng mô hình và phân tích lỗi đến kết hợp dự đoán, chọn ngưỡng và tạo tệp nộp bài. Các phép tính chính được viết trong cell để bạn có thể theo dõi và sửa khi học.
 
-## Cài đặt
+Nếu mới bắt đầu, hãy đi lần lượt qua bài **01 → 02 → 03**. Bài **00** gom toàn bộ pipeline; bài **04** dành cho các thử nghiệm ablation và cách đọc kết quả.
 
-Nếu chạy trên máy cá nhân, tạo môi trường Python và cài package bằng các lệnh sau:
+## Notebook và Google Colab
+
+| Bài | Nội dung | Notebook | Colab |
+| --- | --- | --- | --- |
+| 00 | Từ dữ liệu đến submission: EDA, hai nhánh RGB/High-pass, kết hợp xác suất và xuất ZIP. | [Pipeline](notebooks/00_pipeline_end_to_end.ipynb) | [Mở Colab](https://colab.research.google.com/drive/1DOdCC4VWEq8qK9juWKeP5lzbGF3xia77#scrollTo=eeb9631b) |
+| 01 | EDA, Macro-F1, CNN2, học chuyển giao, crop/FFT và đối chứng Same-FOV. | [EDA, baseline và hình học](notebooks/01_eda_baseline_geometry.ipynb) | [Mở Colab](https://colab.research.google.com/drive/1KnXe0jnp1rbEKRIn-zptR3_6NhVCG-aY#scrollTo=2e6741dd) |
+| 02 | Gaussian, residual, High-pass và các bước huấn luyện, validation, TTA. | [High-pass](notebooks/02_forensic_specialist.ipynb) | [Mở Colab](https://colab.research.google.com/drive/150yCSqBAQj9R5PsneU2JHGwh1tGR-E-m#scrollTo=01c04168) |
+| 03 | Ensemble, fixes/breaks, ngưỡng quyết định, stacking và kiểm tra định dạng submission. | [Ensemble và submission](notebooks/03_ensemble_threshold_submission.ipynb) | [Mở Colab](https://colab.research.google.com/drive/10wOB3F3pMCgH-_T0gyrlckeBUfQCt7Jj#scrollTo=bcb0957e) |
+| 04 | RGB, Haar và trọng số mẫu; so sánh lỗi, đánh giá nhóm và chọn ngưỡng. | [Ablation](notebooks/04_negative_results_and_ablation.ipynb) | [Mở Colab](https://colab.research.google.com/drive/19SWSTvwrJwOVP4TggsYZVNcPumLPdLod#scrollTo=a692a04d) |
+
+## Chạy trên Colab
+
+Mở bài từ bảng trên rồi chạy các cell theo thứ tự. Cell code đầu chuẩn bị môi trường và package; phần dữ liệu tải bộ ảnh theo cấu hình của bài.
+
+Bài 01 và 02 mặc định chạy phần phân tích, minh họa trên CPU. Khi muốn huấn luyện, chọn **Runtime → Change runtime type → T4 GPU** rồi bật cờ tương ứng:
+
+- **Bài 01:** `RUN_BASELINE`, `RUN_E1` và `RUN_E2` mặc định là `False`. `BASELINE_EPOCHS=1` dùng cho lượt thử; E1 gồm ba lượt huấn luyện, E2 gồm bốn lượt để so sánh Native và Resampled trên hai fold.
+- **Bài 02:** `RUN_TRAIN=False`. Bật `True` để huấn luyện High-pass; dùng `MODE="load"` khi đã có checkpoint.
+- **Bài 03:** `SOURCE="reference"` đọc dự đoán đã lưu. Đổi thành `"learner"` để phân tích kết quả của bạn, với `RUN_ID` khớp bài 00. Phần Stack6 cần hai tệp `stack6_features.csv` và `stack6_provenance.json` trong `reference_artifacts/` trước khi bật `RUN_STACK6`.
+- **Bài 00:** mặc định huấn luyện hai nhánh trên GPU, mỗi nhánh 15 epoch. `RUN_OOF=False`; bật cờ này nếu muốn tạo dự đoán OOF cho đủ năm fold.
+- **Bài 04:** `MODE="train"`, `FOLDS=[0]`, `EPOCHS=15` chạy ba nhánh ResNet18 trên GPU. Đổi sang `MODE="reference"` để đọc kết quả lịch sử trên CPU.
+
+Các bảng `reference` là dự đoán của những lượt chạy đã lưu. Khi đánh giá mô hình mình vừa huấn luyện, dùng checkpoint và dự đoán do chính lượt đó tạo ra.
+
+## Chạy trên máy cá nhân
+
+Từ thư mục repo, tạo môi trường Python và cài package:
 
 ```bash
-cd Olympic_AI_PTIT_2026_preliminary_round/AI_LA_AI
+cd AI_LA_AI
 python -m venv .venv
 source .venv/bin/activate
 python -m pip install -e .
 ```
 
-Nếu dùng Google Colab, mở một notebook trong thư mục `notebooks/`. Với bài 0, 1, 2 và chế độ huấn luyện của bài 4, chọn **Runtime → Change runtime type → T4 GPU**, rồi bấm **Run all**. Bài 3 chạy được trên CPU; bài 4 cũng có chế độ `reference` để đọc dự đoán đã lưu. Cell đầu tự chuẩn bị môi trường; cell dữ liệu tự tải và nhận diện thư mục ảnh.
+Sau đó mở một notebook trong `notebooks/`. Các lượt huấn luyện đầy đủ cần GPU CUDA.
 
+## Dữ liệu và cấu trúc thư mục
 
-## Chuẩn bị dữ liệu
+Bảng chia năm fold cố định nằm ở `assets/splits/train_folds.csv`. Nếu chuẩn bị dữ liệu thủ công, dùng cấu trúc sau:
 
-Bảng chia dữ liệu huấn luyện thành các fold nằm ở `assets/splits/train_folds.csv`.
-
-Đặt ảnh và bảng thông tin theo cấu trúc sau:
-
-| Dữ liệu | Thư mục ảnh | Bảng thông tin | Các cột cần có |
+| Dữ liệu | Thư mục ảnh | Bảng thông tin | Cột cần có |
 | --- | --- | --- | --- |
-| Huấn luyện | `data/train/images/` | `data/train/manifest.csv` | `file_name,label` |
-| Kiểm thử | `data/test/images/` | `data/test/manifest.csv` | `file_name` |
+| Train | `data/train/images/` | `data/train/manifest.csv` | `file_name,label` |
+| Private Test | `data/test/images/` | `data/test/manifest.csv` | `file_name` |
 
-Cả hai bảng có thể thêm cột `path`. Nếu lưu dữ liệu ở nơi khác, đặt biến môi trường `AILAAI_DATA_ROOT` trỏ đến thư mục đó trước khi tạo workspace. Trên Colab, bạn có thể để mặc định: bộ nạp tự xử lý ZIP từ link trong bài, kể cả khi bên trong đã có lớp thư mục `data/`.
+Các bảng có thể thêm cột `path`. Nếu ảnh nằm ở nơi khác, đặt biến môi trường `AILAAI_DATA_ROOT` trước khi tạo workspace.
 
-## Chọn notebook cho bài học
+`notebooks/` chứa năm bài thực hành; `notebook_sources/` chứa bản Markdown của các cell; `src/ailaai/` chứa code dùng chung; `configs/` lưu cấu hình. Dự đoán tham khảo nằm trong `reference_artifacts/`, còn bundle kết quả lịch sử của bài 04 nằm trong `data/negative_results/`.
 
-Bạn có thể học lần lượt từ bài 1 đến bài 3, rồi mở bài 0 để chạy toàn bộ quy trình.
+## Kết quả và checkpoint
 
-| Notebook | Nội dung |
-| --- | --- |
-| `01_eda_baseline_geometry.ipynb` | Khám phá dữ liệu, làm quen với mô hình cơ sở và so sánh cách xử lý hình học của ảnh. |
-| `02_forensic_specialist.ipynb` | Tìm hiểu bộ lọc High-pass và cách truyền hàm xử lý ảnh vào phần code huấn luyện dùng chung. |
-| `03_ensemble_threshold_submission.ipynb` | Phân tích dự đoán trên tập validation, kết hợp hai mô hình và kiểm tra tệp ZIP minh họa. |
-| `00_pipeline_end_to_end.ipynb` | Chạy hai nhánh RGB và High-pass, lấy trung bình xác suất và tạo `outputs/<run_id>/submission.zip`. |
-| `04_negative_results_and_ablation.ipynb` | Huấn luyện RGB, Haar và RGB có trọng số; so sánh lỗi và đánh giá ngưỡng trên dữ liệu tách riêng. |
+Checkpoint và log được lưu dưới `artifacts/<run_id>/`; bảng, hình và tệp nộp bài nằm dưới `outputs/<run_id>/`. Bài 00 tạo `submission.zip`, bên trong có một tệp `submission.csv`. ZIP ở bài 03 dùng để minh họa và kiểm tra định dạng.
 
-Bài 4 tự tải ảnh và mặc định huấn luyện ba nhánh ResNet18 trên T4, mỗi nhánh 15 epoch ở fold 0. Giữ `MODE = "train"` rồi bấm **Run all**. Đổi `FOLDS = [0, 1, 2, 3, 4]` nếu muốn chạy đủ năm fold; đổi `MODE = "reference"` nếu chỉ muốn đọc dự đoán lịch sử trên CPU.
-
-Bảng điểm và hình được tính từ dự đoán của lượt chạy, lưu tại `outputs/lesson_nb4_e2e_v1/`. Checkpoint từng fold nằm trong `artifacts/lesson_nb4_e2e_v1_fold<fold>/`. Chạy lại sẽ tiếp tục checkpoint còn dở hoặc dùng lại lượt hoàn tất. Công thức Haar và đặc trưng Sobel trong bài thực hành được ghi rõ trong notebook; điểm mới không phải điểm tái tạo của các thử nghiệm lịch sử.
-
-## Cập nhật notebook từ nguồn Markdown
-
-Các lệnh dưới đây dành cho người biên soạn tài liệu:
-
-```bash
-python scripts/build_notebooks.py --write
-python scripts/build_notebooks.py --check
-python -m compileall src/ailaai/
-```
-
-Lệnh `--write` tạo lại notebook từ nguồn Markdown. Lệnh `--check` báo nếu nội dung notebook khác với bản được tạo từ nguồn. Lệnh cuối kiểm tra cú pháp các tệp Python trong package.
-
-Kết quả mỗi lượt chạy được lưu ở `artifacts/<run_id>/` và `outputs/<run_id>/`. Không commit các thư mục kết quả này vào repo.
-
-Bài 1 và 2 mặc định huấn luyện đủ 15 epoch trên fold 0. Khi chạy lại cùng cấu hình, chương trình tiếp tục checkpoint còn dở hoặc nạp kết quả đã hoàn tất. Nếu đổi cấu hình, kết quả được lưu ở thư mục riêng. Private Test được chọn rõ ràng; bộ nạp không tự thay bằng Public Test.
-
-Để học tiếp, checkpoint cần còn trong thư mục `artifacts/`. Khởi động lại kernel vẫn giữ các tệp này. Nếu xóa runtime hoặc Colab thu hồi phiên, bạn cần tải lại checkpoint đã lưu ở nơi khác hoặc huấn luyện từ đầu.
-
-Cả năm notebook đã được [chạy kiểm tra trực tiếp trên Colab ngày 06/10/2026](evidence/colab_runall_20261006/README.md), gồm huấn luyện đủ 15 epoch, tạo ZIP nộp bài và học tiếp từ checkpoint sau khi khởi động lại kernel.
+Chạy lại cùng cấu hình sẽ tiếp tục checkpoint còn dở hoặc nạp lượt đã hoàn tất. Khởi động lại kernel vẫn giữ file trong runtime. Nếu xóa runtime hoặc Colab thu hồi phiên, bạn cần nạp lại checkpoint đã lưu ở nơi khác để học tiếp.

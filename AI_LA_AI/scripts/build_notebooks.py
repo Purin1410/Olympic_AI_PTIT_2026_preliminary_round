@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import argparse
 import ast
+import copy
 import hashlib
 import json
 import re
@@ -33,11 +34,11 @@ class Cell:
 
 
 NOTEBOOKS = {
-    "00_pipeline_end_to_end": (28, 12),
-    "01_eda_baseline_geometry": (17, 8),
-    "02_forensic_specialist": (10, 5),
-    "03_ensemble_threshold_submission": (23, 11),
-    "04_negative_results_and_ablation": (22, 11),
+    "00_pipeline_end_to_end": (63, 27),
+    "01_eda_baseline_geometry": (54, 24),
+    "02_forensic_specialist": (37, 16),
+    "03_ensemble_threshold_submission": (37, 15),
+    "04_negative_results_and_ablation": (50, 23),
 }
 
 
@@ -64,7 +65,12 @@ def _write_cells(path: Path, cells: list[Cell]) -> None:
     path.write_text("\n\n".join(blocks) + "\n", encoding="utf-8")
 
 
-def _notebook(path: Path, cells: list[Cell]) -> dict:
+def _cell_sources(notebook: dict) -> list[tuple[str, str]]:
+    return [(cell["cell_type"], "".join(cell["source"]).strip("\n"))
+            for cell in notebook["cells"]]
+
+
+def _notebook(path: Path, cells: list[Cell], existing: dict | None = None) -> dict:
     source_hash = hashlib.sha256(path.read_bytes()).hexdigest()
     config_hashes = {}
     for config in sorted((ROOT / "configs").glob("*.json")):
@@ -76,7 +82,7 @@ def _notebook(path: Path, cells: list[Cell]) -> dict:
         if cell.kind == "code":
             common.update({"execution_count": None, "outputs": []})
         notebook_cells.append(common)
-    return {
+    notebook = {
         "cells": notebook_cells,
         "metadata": {
             "kernelspec": {"display_name": "Python 3", "language": "python", "name": "python3"},
@@ -87,6 +93,22 @@ def _notebook(path: Path, cells: list[Cell]) -> dict:
         "nbformat": 4,
         "nbformat_minor": 5,
     }
+    if existing is not None:
+        previous = _cell_sources(existing)
+        current = [(cell.kind, cell.source) for cell in cells]
+        old_code = [source for kind, source in previous if kind == "code"]
+        new_code = [source for kind, source in current if kind == "code"]
+        # Markdown edits retain execution output only when all code is unchanged.
+        if old_code == new_code and [kind for kind, _ in previous] == [kind for kind, _ in current]:
+            notebook = copy.deepcopy(existing)
+            for target, cell in zip(notebook["cells"], cells):
+                target["source"] = cell.source.splitlines(keepends=True)
+            notebook.setdefault("metadata", {})["ailaai"] = {
+                "source_sha256": source_hash,
+                "config_sha256": config_hashes,
+                "cell_count": len(cells),
+            }
+    return notebook
 
 
 def build(write: bool) -> list[Path]:
@@ -105,18 +127,19 @@ def build(write: bool) -> list[Path]:
                 raise ValueError(f"{name}: cell 01 differs from notebook_sources/shared/bootstrap.py.")
             cells[1].source = bootstrap
             _write_cells(source_path, cells)
-        notebook = _notebook(source_path, cells)
         if name == "03_ensemble_threshold_submission":
             content = "\n".join(cell.source for cell in cells if cell.kind == "markdown").casefold()
             hits = [term for term in BANNED_NB3 if term in content]
             if hits:
                 raise ValueError(f"NB3 contains wording to remove: {hits}")
         destination = OUTPUT_ROOT / f"{name}.ipynb"
+        existing = json.loads(destination.read_text(encoding="utf-8")) if destination.is_file() else None
+        notebook = _notebook(source_path, cells, existing)
         rendered = json.dumps(notebook, ensure_ascii=False, indent=1) + "\n"
         if write:
             destination.parent.mkdir(parents=True, exist_ok=True)
             destination.write_text(rendered, encoding="utf-8")
-        elif not destination.is_file() or destination.read_text(encoding="utf-8") != rendered:
+        elif existing is None or _cell_sources(existing) != [(cell.kind, cell.source) for cell in cells]:
             raise ValueError(f"{destination} is missing or differs from its notebook source.")
         written.append(destination)
     return written

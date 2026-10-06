@@ -1,8 +1,6 @@
 # Kẻ mạo danh - Olympic AI PTIT 2026
 
-Output và hình hiện có đến từ [lượt chạy đầy đủ ngày 20/09/2026](docs/execution.md).
-
-Kho lưu trữ mã nguồn giải pháp và chuỗi bài thực nghiệm cho bài toán **Kẻ mạo danh (The Impostor)** trong khuôn khổ vòng sơ loại Olympic AI PTIT 2026.
+Bộ thực hành này hướng dẫn cách giải bài **Kẻ mạo danh (The Impostor)**: khám phá dữ liệu, xây dựng mô hình, so sánh các phương án và tạo tệp nộp bài.
 
 Mỗi mẫu dữ liệu là một cặp gồm hai bức ảnh chân dung (`image_0` và `image_1`), trong đó có đúng một ảnh thật và một ảnh giả mạo. Mô hình cần so sánh các đặc trưng thị giác và dấu vết kỹ thuật số giữa hai bức ảnh để dự đoán nhãn vị trí của ảnh giả: `fake_position` thuộc tập {0, 1}.
 
@@ -47,9 +45,9 @@ Toàn bộ hướng dẫn cài đặt và chạy bên dưới đều bắt đầ
 
 ---
 
-## 1. Hướng dẫn Cài đặt Môi trường (uv)
+## 1. Cài môi trường với uv
 
-Dự án yêu cầu phiên bản đã thử nghiệm **Python 3.11** và sử dụng `uv` để cài các phiên bản thư viện đã khóa trong `uv.lock`:
+Dùng **Python 3.11** và `uv` để cài các phiên bản thư viện trong `uv.lock`:
 
 ### Bước 1: Cài đặt uv (nếu máy chưa có)
 ```bash
@@ -84,9 +82,9 @@ uv run --locked --extra cu128 jupyter lab
 
 ---
 
-## 2. Chuẩn bị Dữ liệu từ file the_imposter.zip được cung cấp cho lớp
+## 2. Chuẩn bị dữ liệu
 
-Khi nhận được **file the_imposter.zip được cung cấp cho lớp**, người học sử dụng kịch bản xử lý dữ liệu an toàn:
+Với tệp `the_imposter.zip` của lớp, chạy lệnh sau để giải nén và kiểm tra dữ liệu:
 
 ```bash
 # Đối với môi trường GPU:
@@ -96,7 +94,7 @@ uv run --locked --extra cu128 python scripts/prepare_official_dataset.py --zip-p
 # uv run --locked --extra cpu python scripts/prepare_official_dataset.py --zip-path the_imposter.zip --dest-dir data
 ```
 
-Kịch bản tự động xử lý các cấu trúc thư mục lồng nhau thường gặp trong gói dữ liệu của lớp (như `data/data/train`, `data/data/data/train` và `data/private_test/private_test`), bảo đảm toàn vẹn từng byte ảnh JPEG gốc và kiểm tra an toàn chống tấn công Zip Slip.
+Script tìm các thư mục train/test kể cả khi ZIP có nhiều lớp `data/`, giữ nguyên byte ảnh JPEG và kiểm tra manifest sau khi giải nén.
 
 Nếu lưu trữ dữ liệu tại thư mục ngoài dự án, bạn có thể thiết lập các biến môi trường:
 ```bash
@@ -139,8 +137,8 @@ Bốn phụ lục mở rộng các thử nghiệm: **A** về biểu diễn ản
 | Phụ lục | Notebook | Nội dung trọng tâm | Đầu vào | Đầu ra chính |
 |:---:|---|---|---|---|
 | **A** | [extension_a_representations](notebooks/extension_a_representations.ipynb) | Frozen Embedding + LR, Partial vs Full fine-tuning, Top-2 vs Mean pooling, ResNet-18 trên ảnh RGB vs Gaussian/NPR residual | Train 3 Folds | Bảng đối chứng mở rộng về biểu diễn và kiến trúc |
-| **B** | [extension_b_objectives_and_repair](notebooks/extension_b_objectives_and_repair.ipynb) | Khảo sát 4 biến thể hàm mất mát ở 19 epoch terminal (image, pairwise, mixed, re-pairing) trên DenseNet-121 3-fold OOF | Train 3 Folds | Bảng so sánh hàm mục tiêu và kỹ thuật ghép cặp lại |
-| **C** | [extension_c_data_scaling](notebooks/extension_c_data_scaling.ipynb) | Khảo sát quy mô dữ liệu 25%, 50%, 100% train dưới cùng ngân sách cố định 391 gradient updates terminal trên EfficientNet-B2 | Train Subsets | Đường cong tăng trưởng theo quy mô dữ liệu |
+| **B** | [extension_b_objectives_and_repair](notebooks/extension_b_objectives_and_repair.ipynb) | So ba loss (image, pairwise, mixed) và thử re-pairing với mixed loss, cùng 19 epoch trên DenseNet-121 3-fold OOF | Train 3 Folds | Bảng so sánh hàm mục tiêu và kỹ thuật ghép cặp lại |
+| **C** | [extension_c_data_scaling](notebooks/extension_c_data_scaling.ipynb) | Khảo sát quy mô dữ liệu 25%, 50%, 100% train dưới cùng ngân sách cố định 391 bước cập nhật trên EfficientNet-B2 | Các tập con train | Macro-F1 theo lượng dữ liệu |
 | **D** | [extension_d_resize_augmentation](notebooks/extension_d_resize_augmentation.ipynb) | Tăng cường dữ liệu co giãn ngẫu nhiên Resize Augmentation 90-100% trên EfficientNet-B2 (đối chứng b2 chuẩn vs b2_resize) | Train 3 Folds | Bảng đánh giá ảnh hưởng của phép co giãn ngẫu nhiên |
 
 </details>
@@ -149,35 +147,15 @@ Nếu muốn đưa cả kết quả phụ lục vào bảng đối chiếu priva
 
 ---
 
-## 4. Chi tiết Phương pháp luận và Kỹ thuật Mô hình hóa
+## 4. Cách chọn mô hình và nộp bài
 
-### 4.1. Mốc kiểm soát ngân sách `center60_cap48`
-Trong các bài thực hành đầu, cấu hình `center60` chạy trần 24 epoch với microbatch 24. Khi mở rộng sang các kiến trúc 288px hoặc EfficientNet, việc thay đổi đồng thời kích thước ảnh, trần epoch và microbatch sẽ tạo ra yếu tố gây nhiễu kép. Cấu hình `center60_cap48` ra đời nhằm đóng vai trò mốc đối chứng chuẩn: giữ nguyên DenseNet-121, view center60, size 224 nhưng đặt trần 48 epoch, microbatch 8 và tích lũy gradient để giữ batch hiệu dụng bằng 24. Ta so `center60_cap48` với `dense288`, `center72`, `b0_224` hoặc `b2_224` để lần lượt đổi size, vùng nhìn hoặc backbone. Riêng B2 ở 288px (`b2`) được so với `dense288` để chỉ đổi backbone.
+Bài 05 so kích thước ảnh, vùng nhìn và backbone với mốc `center60_cap48`: DenseNet-121, center60, 224px, trần 48 epoch, microbatch 8 và batch hiệu dụng 24. Hai ứng viên dẫn đầu được xác nhận cùng ba mốc trên các seed `20260917`, `20260918`, `20260919`; chọn mô hình đơn theo Macro-F1 trung bình, hòa thì theo thứ tự chữ cái.
 
-### 4.2. Sàng lọc và Lựa chọn Mô hình Đơn Động
-Quy trình không mặc định trước mô hình nào sẽ chiến thắng:
-1. Huấn luyện 6 cấu hình sàng lọc và 2 mốc tham chiếu (`center60`, `native`) trên seed chính `20260917`.
-2. Lập shortlist gồm đúng 2 challenger có điểm Macro-F1 cao nhất trên tập phát triển.
-3. Xác nhận shortlist cùng 3 mốc đối chứng trên 3 hạt giống ngẫu nhiên: `20260917`, `20260918`, `20260919`.
-4. Mô hình đơn chiến thắng (winner) là mô hình đạt Macro-F1 trung bình cao nhất qua 3 seed (hòa xét theo thứ tự chữ cái).
+Bài 06 thử trung bình xác suất 50/50 giữa mô hình đã chọn và `native`. Chỉ dùng blend khi mức tăng Macro-F1 trung bình chưa làm tròn qua ba seed đạt ít nhất **+0.0050** (0,50 điểm phần trăm). Nếu mô hình được chọn đã là `native`, giữ mô hình đó.
 
-### 4.3. Phân tích Lỗi và Cổng Blend Selection Gate (+0.0050)
-Sau khi chọn được mô hình đơn winner, hệ thống căn chỉnh 800 cặp OOF ở seed `20260917` giữa winner và mô hình `native` để phân tích ma trận 4 góc:
-- Cả hai cùng đúng / Cả hai cùng sai.
-- Chỉ winner đúng (native sai): rủi ro làm hỏng kết quả khi kết hợp.
-- Chỉ native đúng (winner sai): cơ hội sửa sai tiềm năng của blend.
+Bài 07 lưu quyết định trước khi xem nhãn private. Mặc định `fold_ensemble` dùng trung bình ba mô hình fold. `refit_all` huấn luyện lại trên 1.000 cặp có nhãn với số epoch lấy từ development; 200 cặp từng giữ riêng lúc này cũng tham gia train. Với blend, refit từng nhánh rồi lấy trung bình xác suất. Seed nộp bài là `20260917`.
 
-Tỷ lệ kết hợp được cố định ở mức 50/50: $p_{\text{blend}} = 0.5 \cdot p_{\text{winner}} + 0.5 \cdot p_{\text{native}}$.
-Ta chỉ chọn blend khi mức tăng Macro-F1 trung bình chưa làm tròn qua 3 seed phải đạt tối thiểu **+0.0050** (+0.50 điểm phần trăm) so với mô hình đơn:
-$$\Delta_{\text{mean}} = \frac{1}{3} \sum_{s=1}^{3} (\text{F1}_{\text{blend}, s} - \text{F1}_{\text{winner}, s}) \ge +0.0050$$
-Nếu không đạt ngưỡng hoặc nếu winner chính là `native`, hệ thống giữ mô hình đơn và bỏ qua việc kết hợp để tránh tăng độ phức tạp khi suy diễn.
-
-### 4.4. Khóa Quyết định và Hai Chiến lược Nộp bài
-- **Khóa trước khi xem private (`review_freeze.json`):** Quyết định chọn phương pháp nộp và danh sách đối chiếu được ghi nhận trước khi mở nhãn kiểm tra, giúp giữ tính khách quan giữa tập phát triển và tập kiểm tra.
-- **Chiến lược `fold_ensemble` (mặc định):** Lấy trung bình xác suất dự đoán từ 3 mô hình fold trên tập test. Ba mô hình fold có tập huấn luyện chồng lặp (mỗi fold học trên hai phần ba dữ liệu phát triển, phần train của các fold giao nhau), không phải các mô hình độc lập. Việc lấy trung bình 3 fold là giải pháp tận dụng cả 3 mạng đã huấn luyện, không đảm bảo tự động giảm phương sai trong mọi trường hợp.
-- **Chiến lược `refit_all` (tùy chọn):** Bắt đầu lại từ pretrained và huấn luyện trên toàn bộ 1.000 cặp có nhãn (gộp cả 200 cặp holdout). Ngân sách epoch được lấy cố định từ trung vị best epoch của 3 fold ở seed đầu (hoặc 19 epoch cố định cho Native), không dùng tập test để chọn điểm dừng.
-  - Nếu phương pháp nộp là mô hình đơn: tạo 1 checkpoint tương ứng.
-  - Nếu phương pháp nộp là mô hình kết hợp (`blend_selected_native`): huấn luyện riêng từng thành phần (1 checkpoint cho nhánh winner và 1 checkpoint cho nhánh native, tổng cộng 2 checkpoint) rồi lấy trung bình xác suất khi suy diễn.
+Xem [các cấu hình đối chứng và luồng chọn mô hình](docs/pipeline.md) để đọc chi tiết. Các bảng development dùng OOF; bảng test dùng ensemble fold hoặc refit theo chiến lược đã chọn.
 
 ---
 
@@ -189,7 +167,7 @@ Thư viện `kmd` nằm ngay trong repo, tại [src/kmd](src/kmd). Lệnh `uv sy
 
 ---
 
-## 6. Dữ liệu Đặt Cạnh Repo và Môi trường Kaggle
+## 6. Đặt dữ liệu ngoài repo và chạy trên Kaggle
 
 Nếu dữ liệu nằm cạnh repo, đặt `DATA_ROOT` và `TEST_ROOT` thành đường dẫn tuyệt đối tới đúng thư mục chứa `pairs.csv` trước khi mở Jupyter.
 

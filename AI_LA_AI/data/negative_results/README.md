@@ -1,63 +1,32 @@
-# Replay phụ lục 04
+# Dự đoán tham khảo cho bài 04
 
-Gói train-only gồm 2.000 ID/nhãn/fold chuẩn, xác suất OOF lịch sử, feature biên,
-ngưỡng theo fold, gate receipt và ba biểu đồ Matplotlib PNG. Notebook chỉ đọc gói
-này, dùng `pandas` và `IPython`; không cần ảnh gốc, GPU, model weights hay mạng.
-Trong Colab, đặt `data/negative_results/` dưới `/content` hoặc cạnh notebook.
+Thư mục này chứa kết quả OOF trên 2.000 ảnh train để đọc phần ablation trong bài 04. Khi đặt `MODE="reference"`, notebook đọc các bảng dưới đây trên CPU. Chế độ `train` tải ảnh và huấn luyện ba nhánh riêng.
 
-`source_manifest.json` ghi nguồn từng cột và thông tin các tệp đầu ra. Các phép
-ghép khi đóng gói kiểm tra one-to-one trên `file_name,label,fold` và đủ 2.000 ID.
-`promotion_gates.json` được sao chép nguyên byte từ receipt của run edge-weighted.
+| Tệp | Nội dung |
+| --- | --- |
+| `oof_predictions.csv` | Tên ảnh, nhãn, fold, các xác suất và đặc trưng dùng để phân nhóm. |
+| `threshold_choices.csv` | Ngưỡng ảnh xám/màu đã chọn trên bốn fold còn lại. |
+| `promotion_gates.json` | Kết quả so nhánh có trọng số, nhóm ít biên và đóng góp khi thay nhánh trong stack. |
+| `source_manifest.json` | Nguồn từng cột, cách tính đặc trưng và SHA256 của các tệp. |
+| Ba tệp PNG | Biểu đồ Wavelet, nhóm ít biên và chọn ngưỡng, tính từ các bảng trên. |
 
-## Nguồn xác suất stack
+## Xác suất và đặc trưng
 
-`legacy_stack_prob` lấy từ `results/stack_crossfit_legal7_c1/oof.csv`. Đây là nguồn
-xác suất gốc tái lập **toàn bộ 2.000 quyết định cross-fit** trong
-`results/stack7_gray_color_crossfit_calibration/oof.csv`, cùng điểm fixed
-96,6998%, cross-fit 96,3996% và median 96,7498%. CSV sau calibration chứa quyết
-định 0/1, nên không thể dùng làm xác suất để dò ngưỡng.
+`legacy_stack_prob` là xác suất từ Legal7 (`results/stack_crossfit_legal7_c1/oof.csv`). Tệp sau calibration chứa quyết định 0/1, nên dùng xác suất gốc khi thử ngưỡng. Trên 2.000 ảnh, Macro-F1 của ngưỡng cố định là 96,6998%, cross-fit là 96,3996%, còn trung vị ngưỡng áp lại OOF là 96,7498%. Phép áp lại OOF dùng lại nhãn đã tham gia chọn ngưỡng.
 
-Fallback cũ `evidence/replay/legacy_stack_oof.csv` là bản sao của
-`results/stack6_no_center80_c1/oof.csv`. Nó có cùng điểm fixed nhưng khác xác
-suất: với cờ xám đúng, cross-fit đạt 96,4497% và median đạt 96,6498%, không khớp
-receipt Case 3. Vì vậy bundle dùng Legal7 thay cho fallback này.
+`is_gray` dùng ảnh RGB thu nhỏ với `thumbnail((64,64))`, rồi kiểm tra trung bình `max(pixel)-min(pixel) < 0.5`. `edge_ratio` trong bundle lấy từ đặc trưng **Laplacian 64px** đã lưu. Phân vị 25% của ảnh Fake ở bốn fold còn lại cho ngưỡng nhóm ít biên của fold đang xét. Phần huấn luyện trong notebook dùng **Sobel** trên vùng crop; hai phép đo có thang giá trị khác nhau.
 
-## Feature lịch sử và phạm vi hình ảnh
+Các bảng giữ đủ 2.000 ID và ghép theo `file_name,label,fold`. Khi đọc bảng Wavelet, lưu ý RGB R34 và Wavelet R18 thay cả backbone lẫn biểu diễn. Bảng stack dùng kết quả đã lưu trong `promotion_gates.json`.
 
-`is_gray` được xuất bằng đúng logic `calibrate_stack_gray_color.py`: đổi RGB,
-`thumbnail((64,64))`, rồi kiểm tra trung bình `max(pixel)-min(pixel) < 0.5`.
-Hash tổng hợp của 2.000 ảnh train dùng để xuất cờ được lưu trong manifest.
+## Tạo lại bundle từ dữ liệu nguồn
 
-`edge_ratio` lấy từ bản lịch sử `edge_ratio_laplacian64_c0625.csv` đã lưu trong
-archive metadata. Đây là feature Laplacian, không đổi tên thành Sobel. Phân vị
-25% của Fake ở bốn fold còn lại tái lập đủ năm cutoff của gate receipt.
-Không thay bằng canonical re-audit 1.998 dòng: audit đó loại 01911.jpg và
-01989.jpg từng bị ghi đè bởi contact-sheet. Bundle giữ phạm vi lịch sử 2.000 dòng.
-
-Ba PNG là biểu đồ số liệu được tính từ chính bundle, không phải ảnh ví dụ hay
-bằng chứng về nguyên nhân lỗi. G3 đọc quyết định và attribution đã lưu trong
-receipt; Replay không chạy lại huấn luyện hoặc fitting stack. Các ngưỡng là
-lựa chọn đã lưu, không được tối ưu lại khi mở notebook.
-
-## Tạo lại và kiểm tra
-
-Từ thư mục `AI_LA_AI/`, với môi trường có pandas, NumPy, Pillow và Matplotlib:
+Từ thư mục `AI_LA_AI/`, với pandas, NumPy, Pillow và Matplotlib:
 
 ```bash
 python scripts/build_negative_results.py \
   --historical-root /path/to/historical/AI_LA_AI \
   --edge-features /path/to/historical/edge_ratio_laplacian64_c0625.csv \
   --train-dir /path/to/TACVU1/data/train
-python scripts/build_notebooks.py --check
 ```
 
-Để chạy kiểm thử độc lập trong kernel CPU mới, cài thêm `nbformat`, `nbclient`
-và `ipykernel`, rồi chạy:
-
-```bash
-python scripts/verify_negative_results.py
-```
-
-Verifier sao chép notebook và bundle sang thư mục tạm, chạy mọi code cell, kiểm
-tra hashes và ghi kết quả tại `evidence/negative_results/replay_verification.json`.
-Notebook phát hành giữ outputs rỗng.
+Để xem lại các bảng, mở [bài 04](../../notebooks/04_negative_results_and_ablation.ipynb) và chọn `MODE="reference"`. Nguồn và mã băm của bundle nằm trong [source_manifest.json](source_manifest.json).

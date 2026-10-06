@@ -1,13 +1,13 @@
-# Đặc tả Bài toán Kẻ mạo danh
+# Bài toán Kẻ mạo danh và định dạng dữ liệu
 
 ## 1. Định nghĩa bài toán
 
 Trong khuôn khổ cuộc thi Olympic AI PTIT 2026, bài toán Kẻ mạo danh (The Impostor) đặt ra yêu cầu xác định vị trí của khuôn mặt nhân tạo trong một cặp ảnh chân dung:
 - Mỗi mẫu dữ liệu gồm một cặp hai ảnh: `image_0` (ảnh ở vị trí bên trái) và `image_1` (ảnh ở vị trí bên phải).
-- Ràng buộc cấu trúc bất biến: Trong mỗi cặp luôn có đúng một ảnh thật và một ảnh giả mạo.
+- Mỗi cặp có đúng một ảnh thật và một ảnh giả.
 - Nhãn vị trí cần suy đoán: `fake_position` nhận giá trị `0` nếu ảnh bên trái là ảnh giả, hoặc nhận giá trị `1` nếu ảnh bên phải là ảnh giả.
 
-Hệ thống không cần giải quyết bài toán phát hiện ảnh giả tuyệt đối với một ngưỡng tĩnh trong mọi điều kiện đời thực. Thay vào đó, bài toán là một cuộc đối đầu so sánh tương đối: giữa hai bức ảnh đang xét, bức ảnh nào chứa nhiều dấu vết kỹ thuật số bất thường hoặc dấu hiệu của thuật toán tạo sinh hơn.
+Mô hình so sánh hai ảnh trong cùng cặp để chọn vị trí ảnh giả. Điều kiện mỗi cặp có đúng một ảnh giả giúp ta dùng hiệu điểm số của hai ảnh để dự đoán.
 
 ## 2. Định dạng dữ liệu đầu vào
 
@@ -32,7 +32,7 @@ pair_id,fake_position
 
 Yêu cầu kỹ thuật:
 - Cột `pair_id` phải giữ nguyên vẹn định dạng chuỗi ký tự ban đầu và thứ tự các dòng của tập kiểm tra.
-- Cột `fake_position` chỉ nhận giá trị số nguyên nhị phân là 0 hoặc 1 dựa trên ngưỡng xác suất phán đoán 0.5.
+- Cột `fake_position` chỉ nhận giá trị số nguyên nhị phân là 0 hoặc 1; code trong bài dùng ngưỡng xác suất 0.5.
 
 ## 4. Thước đo đánh giá Macro-F1
 
@@ -44,4 +44,4 @@ Trong đó, $F1_0$ và $F1_1$ là chỉ số F1-Score tính độc lập cho t�
 
 $$F1_k = \frac{2 \cdot TP_k}{2 \cdot TP_k + FP_k + FN_k}$$
 
-Thước đo Macro-F1 xử phạt rất nặng các mô hình chỉ thiên lệch dự đoán về một vị trí để đạt độ chính xác Accuracy cao. Chi tiết phân tích so sánh và công thức tính toán được minh họa tại [00_problem_and_data.ipynb](../notebooks/00_problem_and_data.ipynb).
+Macro-F1 cho hai vị trí cùng trọng số. Nếu mô hình luôn đoán một phía, F1 của phía còn lại bằng 0; khi dữ liệu lệch lớp, Accuracy có thể che mất điểm yếu này. Xem ví dụ tính hai thước đo tại [00_problem_and_data.ipynb](../notebooks/00_problem_and_data.ipynb).

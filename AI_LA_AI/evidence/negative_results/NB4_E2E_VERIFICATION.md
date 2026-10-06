@@ -1,6 +1,6 @@
-# Kiểm tra bản bài 4 có huấn luyện
+# Hồ sơ kiểm tra bài 04 tại phiên bản bac26fc
 
-Ngày: 2026-10-06.
+Ngày: 2026-10-06. Các số cell và kết quả dưới đây thuộc phiên bản này.
 
 ## Phạm vi đã chạy
 
@@ -11,7 +11,7 @@ Ngày: 2026-10-06.
 
 ## Phần chưa xác minh
 
-Chưa chạy ba mô hình mới đủ 15 epoch trên Colab T4. Chrome đang đóng, nên thao tác kiểm tra phiên Colab không kết nối được. Các lần chạy T4 của bài 0–2 trước đó dùng công thức cũ; chúng không thay thế việc kiểm tra luồng huấn luyện mới ở bài 4.
+Hồ sơ này chưa có kết quả huấn luyện đủ 15 epoch cho ba nhánh bài 04 trên Colab T4.
 
 ## Công thức và kết quả
 

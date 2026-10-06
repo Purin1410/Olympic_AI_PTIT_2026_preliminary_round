@@ -16,7 +16,7 @@ flowchart TD
   G --> H
   H --> I{Phương pháp}
   I -->|LR hoặc một cấu hình CNN| J[Xác suất trung bình 3 fold]
-  I -->|Blend| K[50% B2 + 50% native]
+  I -->|Blend| K[50% mô hình đã chọn + 50% native]
   J --> L[Ngưỡng 0.5 và xuất submission.csv]
   K --> L
 ```

@@ -27,7 +27,7 @@ def atomic_save(path, value):
 def train_step(model, x, y, optimizer, c, target_batch=None, clip_grad=5.0, perform_update=True, device="cuda"):
     """Single forward-backward computation step with optional gradient step.
 
-    Shared between visible teaching cells (02_pretrained_and_finetune) and the full trainer.
+    Shared between teaching cells in 03_pretrained_and_finetune and the full trainer.
     Gradient accumulation scales each microbatch loss by len(y) / target_batch.
     """
     target = target_batch if target_batch is not None else len(y)
